@@ -12,12 +12,12 @@
 # Cluster-scoped; apply once per cluster:
 #     kubectl apply -f modules/minecraft-java/template.yaml
 
-apiVersion: gameplane.gg/v1alpha1
+apiVersion: gameplane/v1alpha1
 kind: GameTemplate
 metadata:
   name: minecraft-java
   labels:
-    gameplane.gg/module: minecraft-java
+    gameplane/module: minecraft-java
 spec:
   displayName: Minecraft (Java Edition)
   game: minecraft-java
