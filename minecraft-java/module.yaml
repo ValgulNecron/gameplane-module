@@ -1,4 +1,4 @@
-apiVersion: gameplane.gg/module/v1
+apiVersion: gameplane/module/v1
 name: minecraft-java
 displayName: Minecraft (Java Edition)
 version: 2.4.0

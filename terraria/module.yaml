@@ -1,4 +1,4 @@
-apiVersion: gameplane.gg/module/v1
+apiVersion: gameplane/module/v1
 name: terraria
 displayName: Terraria
 version: 2.0.0
