@@ -3,7 +3,7 @@
 # Apply in any namespace where Gameplane watches:
 #     kubectl -n gameplane-games apply -f samples/gameserver.yaml
 
-apiVersion: gameplane/v1alpha1
+apiVersion: gameplane.local/v1alpha1
 kind: GameServer
 metadata:
   name: smp-01
