@@ -12,12 +12,12 @@
 # Cluster-scoped; apply once per cluster:
 #     kubectl apply -f modules/valheim/template.yaml
 
-apiVersion: gameplane/v1alpha1
+apiVersion: gameplane.local/v1alpha1
 kind: GameTemplate
 metadata:
   name: valheim
   labels:
-    gameplane/module: valheim
+    gameplane.local/module: valheim
 spec:
   displayName: Valheim (Dedicated)
   game: valheim

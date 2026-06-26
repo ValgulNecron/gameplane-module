@@ -1,4 +1,4 @@
-apiVersion: gameplane/module/v1
+apiVersion: gameplane.local/module/v1
 name: valheim
 displayName: Valheim (Dedicated)
 version: 2.3.0
