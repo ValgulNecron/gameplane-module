@@ -19,7 +19,8 @@ metadata:
 spec:
   displayName: Terraria
   game: terraria
-  version: 2.0.0
+  # Kept in lockstep with module.yaml's bundle version from 2.1.0 onward.
+  version: 2.1.0
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#4a90d9"
   description: |
@@ -70,6 +71,13 @@ spec:
     - id: tmodloader-latest
       displayName: "tModLoader · latest"
       image: passivelemon/terraria-docker:tmodloader-latest
+      loader: tmodloader
+    # Year channel: follows tModLoader's 2026.x stable line without jumping
+    # to the next yearly major — steadier for servers with version-sensitive
+    # mod sets than the plain latest tag.
+    - id: tmodloader-2026
+      displayName: "tModLoader · 2026 stable"
+      image: passivelemon/terraria-docker:tmodloader-2026
       loader: tmodloader
     - id: tmodloader-preview
       displayName: "tModLoader · latest preview"

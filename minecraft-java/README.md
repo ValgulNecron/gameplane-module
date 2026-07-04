@@ -26,7 +26,7 @@ Mods and plugins are managed from the **Mods** tab. Each *(version + loader)*
 combination has its own volume, so a Paper plugin set and a Forge mod set
 never collide and survive switching versions. Plugin loaders
 (Paper/Spigot/Bukkit/Purpur) store under `plugins/`; mod loaders
-(Forge/Fabric/Quilt) under `mods/`. Vanilla servers have no mod loader, so
+(Forge/NeoForge/Fabric/Quilt) under `mods/`. Vanilla servers have no mod loader, so
 the tab is hidden for them. Installs are allowed from Modrinth, CurseForge,
 Hangar, and GitHub (max 512 MiB), subject to the agent's SSRF guard.
 
