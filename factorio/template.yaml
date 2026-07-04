@@ -1,0 +1,213 @@
+# Gameplane GameTemplate for Factorio (headless server).
+#
+# Backed by the official-community factoriotools/factorio image. The game
+# ships inside the image (no steamcmd), so first boot only generates the
+# map — fast. Saves, config, and mods all live under /factorio on the data
+# volume.
+#
+# server-settings.json is rendered by the operator from the wizard fields
+# below (configFiles) on every pod start, so settings changes propagate on
+# restart; the entrypoint's "copy example if missing" never fires.
+#
+# No RCON in v1: the image reads its RCON password from a self-generated
+# file (/factorio/config/rconpw) with no env override, so the operator's
+# secret-injected password can't reach it — the agent could never
+# authenticate. Console attaches to container stdin (pty) instead, which
+# accepts the same commands (/save etc.). Factorio autosaves and saves on
+# graceful shutdown, so stop/backup safety doesn't depend on RCON.
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/factorio/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: factorio
+  labels:
+    gameplane.local/module: factorio
+spec:
+  displayName: Factorio (Headless)
+  game: factorio
+  # Kept in lockstep with module.yaml's bundle version.
+  version: 1.0.0
+  # Brand color the dashboard tints this game's icon/accents with.
+  accentColor: "#e39827"
+  description: |
+    Factorio headless server using
+    [factoriotools/factorio](https://github.com/factoriotools/factorio-docker).
+    Pick the stable or experimental channel (or a pinned release) in the
+    wizard; server settings are managed from the panel, and the Mods tab
+    browses the official Factorio mod portal. Console attaches to container
+    stdin (pty); no RCON.
+
+  # Fallback image when a server selects no version. versions[] below is the
+  # authoritative source for the wizard's picker.
+  image: factoriotools/factorio:stable
+
+  env:
+    # Load the newest save on boot (the entrypoint generates one on first
+    # start). SAVE_NAME below can pin a specific save instead.
+    - name: LOAD_LATEST_SAVE
+      value: "true"
+
+  ports:
+    - name: game
+      containerPort: 34197
+      protocol: UDP
+      advertise: true
+    # Always opened by the image (we don't use RCON — see header comment),
+    # but it's the only TCP port and therefore the probe target.
+    - name: rcon
+      containerPort: 27015
+      protocol: TCP
+      advertise: false
+
+  # Saves, config, and the mods dir all live under /factorio.
+  storage:
+    size: 5Gi
+    mountPath: /factorio
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+
+  # Factorio's command interface here is the container stdin (no usable
+  # RCON — see header comment), so the Console tab attaches via the
+  # kubelet's pod-attach API.
+  rcon:
+    protocol: none
+  consoleMode: pty
+
+  # Channel/pin picker. The image ships the game, so the tag IS the game
+  # version. gameVersion carries the mod portal's major token for registry
+  # filtering; the moving channels omit it (portal browse then shows all).
+  versions:
+    - id: stable
+      displayName: "Stable channel"
+      image: factoriotools/factorio:stable
+      loader: native
+      default: true
+    - id: latest
+      displayName: "Experimental channel"
+      image: factoriotools/factorio:latest
+      loader: native
+    - id: stable-2-0-77
+      displayName: "2.0.77 (pinned stable)"
+      image: factoriotools/factorio:stable-2.0.77
+      loader: native
+      gameVersion: "2.0"
+
+  capabilities:
+    # Factorio loads .zip mods straight from the mods dir (no extraction).
+    # The in-app browser searches the official mod portal; downloads need
+    # the player's own factorio.com credentials, so the panel hands off to
+    # the from-URL form with the portal URL prefilled (append
+    # ?username=...&token=... from factorio.com/profile).
+    mods:
+      loaders:
+        native:
+          displayName: Mods
+          path: mods
+          extensions: [".zip"]
+      install:
+        allowedHosts:
+          - mods.factorio.com
+          - .factorio.com
+          - github.com
+          - .githubusercontent.com
+        maxSizeMB: 256
+      registry:
+        providers:
+          - provider: factorio
+
+  probes:
+    # The game port is UDP, so probes ride the always-open RCON TCP port.
+    # First boot generates the map — quick next to steamcmd games, but
+    # large map presets can take a few minutes.
+    startup:
+      tcpSocket:
+        port: rcon
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      failureThreshold: 30
+    readiness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 10
+      failureThreshold: 6
+    liveness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 30
+      failureThreshold: 5
+
+  # Rendered to /factorio/config/server-settings.json on every pod start
+  # (before the entrypoint runs, so its example-copy never fires). Factorio
+  # falls back to defaults for keys not present in the file.
+  configFiles:
+    - path: config/server-settings.json
+      template: |
+        {
+          "name": {{printf "%q" .Values.SERVER_NAME}},
+          "description": {{printf "%q" .Values.SERVER_DESCRIPTION}},
+          "max_players": {{.Values.MAX_PLAYERS}},
+          "visibility": {
+            "public": {{.Values.PUBLIC}},
+            "lan": true
+          },
+          "game_password": {{printf "%q" .Values.GAME_PASSWORD}},
+          "require_user_verification": true,
+          "autosave_interval": {{.Values.AUTOSAVE_INTERVAL}},
+          "autosave_only_on_server": true,
+          "non_blocking_saving": false
+        }
+
+  configSchema:
+    - name: SERVER_NAME
+      displayName: Server name
+      type: string
+      default: "A Gameplane Factorio server"
+      required: true
+      target: file
+    - name: SERVER_DESCRIPTION
+      displayName: Server description
+      type: string
+      default: ""
+      target: file
+    - name: GAME_PASSWORD
+      displayName: Game password
+      description: Required to join. Leave blank for an open server.
+      type: password
+      default: ""
+      target: file
+    - name: MAX_PLAYERS
+      displayName: Max players
+      description: 0 means unlimited.
+      type: int
+      default: "0"
+      target: file
+    - name: PUBLIC
+      displayName: List on public matchmaking
+      description: Publishing to the public server list requires factorio.com credentials in server-settings.json — leave off unless you've added them via the Files tab.
+      type: bool
+      default: "false"
+      target: file
+    - name: AUTOSAVE_INTERVAL
+      displayName: Autosave interval (minutes)
+      type: int
+      default: "10"
+      target: file
+    - name: SAVE_NAME
+      displayName: Save name
+      description: Specific save to load/create. Leave blank to load the latest (or generate one on first boot).
+      type: string
+      default: ""
+    - name: UPDATE_MODS_ON_START
+      displayName: Update mods on start
+      description: Update installed mods to match the game version at container start.
+      type: bool
+      default: "false"
