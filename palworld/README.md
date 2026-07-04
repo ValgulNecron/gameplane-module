@@ -27,8 +27,11 @@ per-server password and injects it as `ADMIN_PASSWORD`, which the image
 uses for **both** RCON and the in-game admin password — read it from the
 `<server>-rcon` Secret if you need to `/AdminPassword` in game.
 
-Graceful stop runs `Save` then `Shutdown 1` over RCON, and backups quiesce
-with `Save` first, so snapshots never catch a half-written world.
+Graceful stop runs `Save` then `Shutdown 1` over RCON, so the server never
+takes a SIGTERM mid-save. Backups snapshot the data volume directly (no
+quiesce — Palworld's `Save` is a one-shot flush, not a pausable state);
+freshness therefore rides the server's autosave interval, and the "Save
+world" action forces a flush on demand.
 
 There is **no Players tab** for Palworld yet: its RCON has no
 Minecraft-style `list` command (`ShowPlayers` returns CSV the agent's
