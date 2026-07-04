@@ -29,14 +29,14 @@ spec:
   displayName: Palworld (Dedicated)
   game: palworld
   # Kept in lockstep with module.yaml's bundle version.
-  version: 1.0.0
+  version: 1.0.1
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#3d9dd9"
   description: |
     Palworld dedicated server using
     [thijsvanloef/palworld-server-docker](https://github.com/thijsvanloef/palworld-server-docker).
     The game installs via steamcmd on first boot (several GB — give it a few
-    minutes). RCON console, save-aware stop/backups, and a `.pak` mod volume
+    minutes). RCON console, a save-then-shutdown graceful stop, and a `.pak` mod volume
     with archive install from the Mods tab.
 
   # Fallback image when a server selects no version. versions[] below is the
@@ -112,12 +112,13 @@ spec:
       loader: pak
 
   capabilities:
-    # Save before backup snapshots; save-then-shutdown on graceful stop.
-    # Palworld's Shutdown takes seconds + message; 1s is effectively "now"
-    # after a completed Save.
-    quiesce:
-      quiesce: ["Save"]
-      unquiesce: []
+    # No quiesce block: Palworld's "Save" is a one-shot flush, not a
+    # pausable state, so the pause/resume quiesce model doesn't fit (the
+    # operator requires both a quiesce and an unquiesce command). Backups
+    # snapshot the volume while the server autosaves; lifecycle.stop below
+    # saves on graceful stop. save-then-shutdown on stop — Palworld's
+    # Shutdown takes seconds + a message; 1s is effectively "now" after a
+    # completed Save.
     lifecycle:
       stop: ["Save", "Shutdown 1"]
     actions:
