@@ -1,0 +1,32 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: palworld-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: palworld
+
+  # Wrapper image channel; the game itself always tracks Steam via
+  # steamcmd on boot. "latest" is the default.
+  version: latest
+
+  config:
+    SERVER_NAME: "Gameplane Palworld"
+    SERVER_PASSWORD: "change-me-please"
+    PLAYERS: "16"
+    COMMUNITY: "false"
+    MULTITHREADING: "true"
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 32211
+
+  storage:
+    size: 20Gi
+
+  resources:
+    requests: { cpu: 1, memory: 4Gi }
+    limits:   { cpu: 4, memory: 12Gi }

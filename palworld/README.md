@@ -1,0 +1,66 @@
+# Palworld (Dedicated)
+
+Palworld dedicated server backed by the community
+[thijsvanloef/palworld-server-docker](https://github.com/thijsvanloef/palworld-server-docker)
+image. The game server itself is installed and updated by **steamcmd at
+container start** (`UPDATE_ON_BOOT=true`), so the game always tracks Steam.
+
+> **First boot is slow.** steamcmd downloads several GB before anything
+> listens. The template's startup probe budgets ~30 minutes; watch progress
+> in the dashboard's Logs tab (source "pod").
+
+## Version picker
+
+The wizard's version picker selects the **wrapper image channel**, not the
+game version (that always tracks Steam):
+
+| Entry | Tag | Use when |
+|---|---|---|
+| Latest wrapper | `latest` | default; newest wrapper scripts |
+| v2 wrapper | `v2` | follow the v2 major line only |
+| v2.4.1 wrapper | `v2.4.1` | pin everything except the game itself |
+
+## Console & admin
+
+RCON is enabled (Source protocol, port 25575). The operator generates a
+per-server password and injects it as `ADMIN_PASSWORD`, which the image
+uses for **both** RCON and the in-game admin password — read it from the
+`<server>-rcon` Secret if you need to `/AdminPassword` in game.
+
+Graceful stop runs `Save` then `Shutdown 1` over RCON, and backups quiesce
+with `Save` first, so snapshots never catch a half-written world.
+
+There is **no Players tab** for Palworld yet: its RCON has no
+Minecraft-style `list` command (`ShowPlayers` returns CSV the agent's
+player poller doesn't parse), so the tab would render broken. Kick/ban via
+the Console tab (`KickPlayer <steamid>` / `BanPlayer <steamid>`) if needed.
+
+## Mods (.pak)
+
+The Mods tab manages engine-native **`.pak` mods** in
+`Pal/Content/Paks/~mods` on the server volume:
+
+- **From URL** — GitHub-hosted `.pak` files (the allowlist covers
+  `github.com` and release/raw CDNs).
+- **Upload** — push a locally built/downloaded `.pak` straight from the
+  browser (Gameplane ≥ the release with mod uploads).
+
+Server + client mod pairs generally require players to install the client
+half themselves — that's inherent to Palworld modding, not the panel.
+
+**UE4SS / Lua mods are not bundled.** UE4SS on Linux dedicated servers is
+still experimental and needs files injected next to the game binary. If you
+want to experiment, install it manually via the Files tab into
+`Pal/Binaries/Linux/` per the UE4SS docs — at your own risk; updates from
+steamcmd may clobber it.
+
+## Sizing
+
+Palworld is memory-hungry: the template requests 4Gi and caps at 12Gi/4
+CPUs. Long-running servers with many pals benefit from more memory and the
+image's `AUTO_REBOOT_*` options (set via the EnvVars settings tab).
+
+## Sample
+
+See [`samples/gameserver.yaml`](samples/gameserver.yaml) for a NodePort
+deployment with a password and community listing disabled.

@@ -1,0 +1,197 @@
+# Gameplane GameTemplate for Palworld (dedicated server).
+#
+# Backed by the community thijsvanloef/palworld-server-docker image. The
+# game server itself is installed/updated by steamcmd on boot
+# (UPDATE_ON_BOOT), so the FIRST start downloads several GB — the startup
+# probe budgets for that, and the install output streams to the dashboard's
+# Logs tab (source "pod").
+#
+# The versions[] picker selects the WRAPPER image channel (the game itself
+# always tracks Steam): latest, the v2 major line, or a pinned wrapper
+# release for change-averse servers.
+#
+# RCON is native Source protocol; the image uses ADMIN_PASSWORD as the RCON
+# password, so the operator-generated per-server secret doubles as the
+# in-game admin password. No players block: Palworld's RCON has no
+# Minecraft-style "list" command (ShowPlayers returns CSV the agent's
+# player poller doesn't parse yet), so a Players tab would render broken.
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/palworld/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: palworld
+  labels:
+    gameplane.local/module: palworld
+spec:
+  displayName: Palworld (Dedicated)
+  game: palworld
+  # Kept in lockstep with module.yaml's bundle version.
+  version: 1.0.0
+  # Brand color the dashboard tints this game's icon/accents with.
+  accentColor: "#3d9dd9"
+  description: |
+    Palworld dedicated server using
+    [thijsvanloef/palworld-server-docker](https://github.com/thijsvanloef/palworld-server-docker).
+    The game installs via steamcmd on first boot (several GB — give it a few
+    minutes). RCON console, save-aware stop/backups, and a `.pak` mod volume
+    with archive install from the Mods tab.
+
+  # Fallback image when a server selects no version. versions[] below is the
+  # authoritative source for the wizard's picker.
+  image: thijsvanloef/palworld-server-docker:latest
+
+  env:
+    - name: RCON_ENABLED
+      value: "true"
+    - name: RCON_PORT
+      value: "25575"
+    - name: PORT
+      value: "8211"
+    - name: QUERY_PORT
+      value: "27015"
+    # Install/update the server via steamcmd at container start. Required on
+    # the very first boot; afterwards it keeps the game current with Steam.
+    - name: UPDATE_ON_BOOT
+      value: "true"
+
+  ports:
+    - name: game
+      containerPort: 8211
+      protocol: UDP
+      advertise: true
+    - name: query
+      containerPort: 27015
+      protocol: UDP
+      advertise: false
+    - name: rcon
+      containerPort: 25575
+      protocol: TCP
+      advertise: false
+
+  # The whole server install lives on the data volume (steamcmd target dir),
+  # so game files, saves, and mods all persist together.
+  storage:
+    size: 20Gi
+    mountPath: /palworld
+
+  resources:
+    requests:
+      cpu: "1"
+      memory: 4Gi
+    limits:
+      cpu: "4"
+      memory: 12Gi
+
+  rcon:
+    protocol: source
+    port: 25575
+    # PasswordSecretRef left unset — the operator generates a password into
+    # "<gameserver>-rcon" and injects it as ADMIN_PASSWORD, which the image
+    # uses as both the RCON and in-game admin password.
+    passwordEnv: ADMIN_PASSWORD
+
+  # Wrapper-image channels. The game version always tracks Steam (steamcmd
+  # updates on boot); these pin how eagerly the WRAPPER scripts update. All
+  # entries share the "pak" loader so the mod volume follows across.
+  versions:
+    - id: latest
+      displayName: "Latest wrapper"
+      image: thijsvanloef/palworld-server-docker:latest
+      loader: pak
+      default: true
+    - id: v2
+      displayName: "v2 wrapper (major line)"
+      image: thijsvanloef/palworld-server-docker:v2
+      loader: pak
+    - id: v2-4-1
+      displayName: "v2.4.1 wrapper (pinned)"
+      image: thijsvanloef/palworld-server-docker:v2.4.1
+      loader: pak
+
+  capabilities:
+    # Save before backup snapshots; save-then-shutdown on graceful stop.
+    # Palworld's Shutdown takes seconds + message; 1s is effectively "now"
+    # after a completed Save.
+    quiesce:
+      quiesce: ["Save"]
+      unquiesce: []
+    lifecycle:
+      stop: ["Save", "Shutdown 1"]
+    actions:
+      - id: save-world
+        displayName: Save world
+        description: Flush the world to disk now.
+        icon: save
+        command: "Save"
+    # Engine-native .pak mods, loaded from Pal/Content/Paks/~mods inside the
+    # server install. URL installs are limited to GitHub (most server-side
+    # pak mods publish there); local files can be added via upload. UE4SS
+    # Lua modding is NOT bundled (experimental on Linux servers) — see the
+    # README for the manual route.
+    mods:
+      loaders:
+        pak:
+          displayName: Pak mods
+          path: "Pal/Content/Paks/~mods"
+          extensions: [".pak"]
+      install:
+        allowedHosts:
+          - github.com
+          - .githubusercontent.com
+        maxSizeMB: 512
+
+  probes:
+    # First boot = multi-GB steamcmd download before anything listens, so
+    # the startup probe budgets ~30 minutes. RCON's TCP port is the only
+    # reliable liveness signal (game traffic is UDP).
+    startup:
+      tcpSocket:
+        port: rcon
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      failureThreshold: 120
+    readiness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 10
+      failureThreshold: 6
+    liveness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 30
+      failureThreshold: 5
+
+  # Field names match thijsvanloef/palworld-server-docker env vars exactly.
+  configSchema:
+    - name: SERVER_NAME
+      displayName: Server name
+      type: string
+      default: "A Gameplane Palworld server"
+      required: true
+    - name: SERVER_DESCRIPTION
+      displayName: Server description
+      type: string
+      default: ""
+    - name: SERVER_PASSWORD
+      displayName: Server password
+      description: Required to join. Leave blank for an open server (not with COMMUNITY).
+      type: password
+      default: ""
+    - name: PLAYERS
+      displayName: Max players
+      description: 1-32.
+      type: int
+      default: "16"
+    - name: COMMUNITY
+      displayName: List in community browser
+      description: Show the server in Palworld's community server list. Set a server password if enabled.
+      type: bool
+      default: "false"
+    - name: MULTITHREADING
+      displayName: Multithreading
+      description: Improves performance on multi-core nodes (effective up to ~4 threads).
+      type: bool
+      default: "true"
