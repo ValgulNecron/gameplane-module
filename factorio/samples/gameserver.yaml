@@ -1,0 +1,33 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: factorio-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: factorio
+
+  # "stable" follows the stable channel; "latest" the experimental one;
+  # "stable-2-0-77" pins the game version (and filters mod browse to 2.0).
+  version: stable
+
+  config:
+    SERVER_NAME: "Gameplane Factorio"
+    SERVER_DESCRIPTION: "The factory must grow."
+    GAME_PASSWORD: "change-me-please"
+    MAX_PLAYERS: "0"
+    PUBLIC: "false"
+    AUTOSAVE_INTERVAL: "10"
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 34197
+
+  storage:
+    size: 5Gi
+
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits:   { cpu: 2, memory: 4Gi }
