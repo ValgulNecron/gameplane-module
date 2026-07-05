@@ -22,7 +22,7 @@ spec:
   displayName: Minecraft (Java Edition)
   game: minecraft-java
   # Kept in lockstep with module.yaml's bundle version from 2.5.0 onward.
-  version: 2.5.0
+  version: 2.6.0
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#5b9a3e"
   description: |
@@ -37,6 +37,10 @@ spec:
   # release / Java runtime — TYPE and VERSION env select the software.
   image: itzg/minecraft-server:java21
 
+  # INIT_MEMORY/MAX_MEMORY are configSchema fields (schema-resolved config
+  # overrides template env on name collisions), so the JVM heap is visible
+  # and adjustable in the wizard next to the container memory limit instead
+  # of being silently pinned here.
   env:
     - name: EULA
       value: "TRUE"
@@ -44,10 +48,6 @@ spec:
       value: "true"
     - name: RCON_PORT
       value: "25575"
-    - name: INIT_MEMORY
-      value: "1G"
-    - name: MAX_MEMORY
-      value: "2G"
 
   ports:
     - name: game
@@ -518,3 +518,23 @@ spec:
       displayName: View distance (chunks)
       type: int
       default: "10"
+
+    # The itzg image passes these to the JVM as -Xms/-Xmx. They must track
+    # the container memory limit: the limit only caps the cgroup, it does
+    # NOT size the heap, so a 3Gi limit with the old hardcoded 2G heap
+    # wasted a gigabyte — and a limit *below* heap + JVM overhead got the
+    # container OOM-killed.
+    - name: MAX_MEMORY
+      displayName: JVM max heap
+      description: >-
+        Java heap ceiling (e.g. 2G, 3072M). Keep roughly 25% below the
+        container memory limit — the JVM needs headroom for non-heap
+        memory, and exceeding the limit gets the server OOM-killed.
+      type: string
+      default: "2G"
+
+    - name: INIT_MEMORY
+      displayName: JVM initial heap
+      description: Starting heap size (-Xms). At most JVM max heap.
+      type: string
+      default: "1G"

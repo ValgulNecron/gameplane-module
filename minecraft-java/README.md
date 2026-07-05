@@ -36,6 +36,16 @@ one-click install a mod or plugin by name without hunting for a URL. The
 chosen file downloads through the same allowlist (Modrinth's CDN is listed).
 **From URL** install remains available for anything not on Modrinth.
 
+## Memory / JVM heap
+
+The wizard's **JVM max heap** / **JVM initial heap** fields (configSchema
+`MAX_MEMORY` / `INIT_MEMORY`, defaults `2G` / `1G`) size the Java heap via
+the itzg image's `-Xmx`/`-Xms` plumbing. Keep the max heap roughly **25%
+below the container memory limit**: the limit only caps the cgroup — it
+does not size the heap — so a heap at or above the limit gets the server
+OOM-killed, and a limit far above the heap wastes RAM the JVM will never
+touch.
+
 ## Logs (including install)
 
 itzg downloads the selected server jar on first boot; that output streams to
