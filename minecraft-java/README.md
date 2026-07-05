@@ -38,13 +38,21 @@ chosen file downloads through the same allowlist (Modrinth's CDN is listed).
 
 ## Memory / JVM heap
 
-The wizard's **JVM max heap** / **JVM initial heap** fields (configSchema
-`MAX_MEMORY` / `INIT_MEMORY`, defaults `2G` / `1G`) size the Java heap via
-the itzg image's `-Xmx`/`-Xms` plumbing. Keep the max heap roughly **25%
-below the container memory limit**: the limit only caps the cgroup — it
-does not size the heap — so a heap at or above the limit gets the server
-OOM-killed, and a limit far above the heap wastes RAM the JVM will never
-touch.
+Left empty (the default), the wizard's **JVM max heap** / **JVM initial
+heap** fields (configSchema `MAX_MEMORY` / `INIT_MEMORY`) are sized
+automatically to **75% of the container memory limit** — pick 8Gi of
+memory and the heap becomes 6144M, and it re-tracks the limit whenever
+you resize the server. The remaining 25% is headroom for non-heap JVM
+memory: the limit only caps the cgroup — it does not size the heap — so
+a heap at or above the limit gets the server OOM-killed, and a limit far
+above the heap wastes RAM the JVM will never touch. Automatic sizing
+needs gameplane ≥ 0.2.0-beta.6 (`gameplaneMinVersion` gates this bundle
+accordingly).
+
+Setting either field explicitly (e.g. `2G`, `3072M`) turns the automatic
+sizing off for that field and feeds the value straight to the itzg
+image's `-Xmx`/`-Xms` plumbing; keep an explicit max heap roughly 25%
+below the container limit for the same reason.
 
 ## Logs (including install)
 
