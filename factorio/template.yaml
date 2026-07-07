@@ -9,11 +9,10 @@
 # below (configFiles) on every pod start, so settings changes propagate on
 # restart; the entrypoint's "copy example if missing" never fires.
 #
-# No RCON in v1: the image reads its RCON password from a self-generated
-# file (/factorio/config/rconpw) with no env override, so the operator's
-# secret-injected password can't reach it — the agent could never
-# authenticate. Console attaches to container stdin (pty) instead, which
-# accepts the same commands (/save etc.). Factorio autosaves and saves on
+# RCON works via the operator's rcon.passwordFile pointing at the image's
+# self-generated /factorio/config/rconpw file — the agent authenticates to
+# RCON for the players list and actions. Console still attaches to container
+# stdin (pty) for direct command entry. Factorio autosaves and saves on
 # graceful shutdown, so stop/backup safety doesn't depend on RCON.
 #
 # Cluster-scoped; apply once per cluster:
@@ -29,7 +28,7 @@ spec:
   displayName: Factorio (Headless)
   game: factorio
   # Kept in lockstep with module.yaml's bundle version.
-  version: 1.0.0
+  version: 1.1.0
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#e39827"
   description: |
@@ -38,7 +37,7 @@ spec:
     Pick the stable or experimental channel (or a pinned release) in the
     wizard; server settings are managed from the panel, and the Mods tab
     browses the official Factorio mod portal. Console attaches to container
-    stdin (pty); no RCON.
+    stdin (pty); RCON powers the players list and actions.
 
   # Fallback image when a server selects no version. versions[] below is the
   # authoritative source for the wizard's picker.
@@ -75,11 +74,13 @@ spec:
       cpu: "2"
       memory: 4Gi
 
-  # Factorio's command interface here is the container stdin (no usable
-  # RCON — see header comment), so the Console tab attaches via the
-  # kubelet's pod-attach API.
+  # RCON authenticates via the self-generated /factorio/config/rconpw file
+  # (relative to storage.mountPath). Console attaches to container stdin
+  # (pty) for direct command entry.
   rcon:
-    protocol: none
+    protocol: source
+    port: 27015
+    passwordFile: config/rconpw
   consoleMode: pty
 
   # Channel/pin picker. The image ships the game, so the tag IS the game
@@ -102,6 +103,10 @@ spec:
       gameVersion: "2.0"
 
   capabilities:
+    players:
+      list:
+        command: "/players online"
+        entryRegex: "^\\s+(.+?) \\(online\\)$"
     # Factorio loads .zip mods straight from the mods dir (no extraction).
     # The in-app browser searches the official mod portal; downloads need
     # the player's own factorio.com credentials, so the panel hands off to

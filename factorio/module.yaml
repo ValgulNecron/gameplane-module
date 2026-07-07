@@ -1,7 +1,7 @@
 apiVersion: gameplane.local/module/v1
 name: factorio
 displayName: Factorio (Headless)
-version: 1.0.0
+version: 1.1.0
 game: factorio
 summary: Factorio headless server (factoriotools/factorio) with a stable/latest/pinned channel picker, server-settings managed from the wizard, and a mods volume with in-app Factorio mod portal browse. Console via container stdin.
 homepage: https://www.factorio.com/
