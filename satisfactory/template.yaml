@@ -1,0 +1,137 @@
+# Gameplane GameTemplate for Satisfactory (dedicated server).
+#
+# Backed by the community wolveix/satisfactory-server image, which installs
+# and updates the game via steamcmd on boot (the FIRST start downloads
+# several GB — the install output streams to the dashboard's Logs tab,
+# source "pod").
+#
+# Satisfactory has no RCON or stdin console, so there is no Console tab and
+# no player-moderation / quiesce capabilities — the server is configured
+# entirely through env vars (surfaced in the New Server wizard) and managed
+# in-game. Backups snapshot the /config volume (gamefiles + saves); the
+# image saves and shuts down cleanly on SIGTERM.
+#
+# The versions[] picker selects the Steam branch: the public release or the
+# experimental build (STEAMBETA), both running the same image.
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/satisfactory/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: satisfactory
+  labels:
+    gameplane.local/module: satisfactory
+spec:
+  displayName: Satisfactory (Dedicated)
+  game: satisfactory
+  # Kept in lockstep with module.yaml's bundle version.
+  version: 1.0.0
+  # Brand color the dashboard tints this game's icon/accents with.
+  accentColor: "#e59344"
+  description: |
+    Satisfactory dedicated server using
+    [wolveix/satisfactory-server](https://github.com/wolveix/satisfactory-server).
+    The game installs via steamcmd on first boot (several GB — give it a few
+    minutes; progress streams to the Logs tab). No RCON/console: configure the
+    server from the wizard's env fields and manage it in-game. Choose the
+    stable or experimental Steam branch in the New Server wizard.
+
+  # Fallback image when a server selects no version. versions[] below is the
+  # authoritative source for the wizard's picker.
+  image: wolveix/satisfactory-server:latest
+
+  env:
+    # Install/update the game via steamcmd at container start. Required on the
+    # very first boot; afterwards it keeps the server current with Steam.
+    - name: SKIPUPDATE
+      value: "false"
+    # Run as a fixed non-root uid/gid inside the image (gosu drops from root
+    # after it fixes ownership on the data volume).
+    - name: PUID
+      value: "1000"
+    - name: PGID
+      value: "1000"
+
+  ports:
+    # Satisfactory 1.0 uses a single game port for both UDP and TCP, plus a
+    # TCP "messaging" port. All are needed by clients, so all are advertised.
+    - name: game
+      containerPort: 7777
+      protocol: UDP
+      advertise: true
+    - name: game-tcp
+      containerPort: 7777
+      protocol: TCP
+      advertise: true
+    - name: messaging
+      containerPort: 8888
+      protocol: TCP
+      advertise: true
+
+  # The whole server install lives on the data volume (steamcmd target dir),
+  # so game files, saves, logs, and backups all persist together under /config.
+  storage:
+    size: 25Gi
+    mountPath: /config
+
+  resources:
+    requests:
+      cpu: "2"
+      memory: 6Gi
+    limits:
+      cpu: "6"
+      memory: 16Gi
+
+  # Satisfactory speaks neither RCON nor a stdin console.
+  rcon:
+    protocol: none
+  consoleMode: none
+
+  # No probes declared: the operator adds none by default, so the pod is Ready
+  # as soon as the container runs and the agent sidecar's heartbeat drives the
+  # Running phase. Satisfactory exposes no HTTP/TCP health endpoint usable as a
+  # readiness gate (the game port is UDP), and the first boot is a multi-GB
+  # steamcmd download whose progress is visible in the Logs tab.
+
+  # Steam branch as the "version" axis. Both entries run the same image;
+  # STEAMBETA selects whether steamcmd installs the public release or the
+  # experimental build. No loader (Satisfactory has no mod manager here).
+  versions:
+    - id: stable
+      displayName: "Stable"
+      image: wolveix/satisfactory-server:latest
+      default: true
+      env:
+        - name: STEAMBETA
+          value: "false"
+    - id: experimental
+      displayName: "Experimental"
+      image: wolveix/satisfactory-server:latest
+      env:
+        - name: STEAMBETA
+          value: "true"
+
+  # Field names match wolveix/satisfactory-server env vars exactly.
+  configSchema:
+    - name: MAXPLAYERS
+      displayName: Max players
+      description: Player limit for the server.
+      type: int
+      default: "4"
+    - name: MAXTICKRATE
+      displayName: Max tick rate
+      description: Maximum simulation tick rate (Hz). Lower to reduce CPU load.
+      type: int
+      default: "30"
+    - name: AUTOSAVENUM
+      displayName: Autosave slots
+      description: Number of rotating autosave files kept.
+      type: int
+      default: "5"
+    - name: TIMEOUT
+      displayName: Client timeout
+      description: Seconds before an unresponsive client is dropped.
+      type: int
+      default: "30"

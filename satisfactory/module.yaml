@@ -1,0 +1,9 @@
+apiVersion: gameplane.local/module/v1
+name: satisfactory
+displayName: Satisfactory (Dedicated)
+version: 1.0.0
+game: satisfactory
+summary: Satisfactory dedicated server (wolveix/satisfactory-server) with a stable/experimental branch picker. Env-configured; installs via steamcmd on first boot.
+homepage: https://www.satisfactorygame.com/
+license: MIT
+gameplaneMinVersion: 0.2.0
