@@ -1,0 +1,26 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: cs2-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: cs2
+
+  config:
+    SRCDS_TOKEN: "change-me-gslt-token"
+    CS2_HOST_WORKSHOP_COLLECTION: ""
+    CS2_HOST_WORKSHOP_MAP: ""
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 32015
+
+  storage:
+    size: 60Gi
+
+  resources:
+    requests: { cpu: 1, memory: 2Gi }
+    limits:   { cpu: 4, memory: 4Gi }

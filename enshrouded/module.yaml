@@ -1,0 +1,9 @@
+apiVersion: gameplane.local/module/v1
+name: enshrouded
+displayName: Enshrouded
+version: 1.0.0
+game: enshrouded
+summary: Enshrouded dedicated server.
+homepage: https://enshrouded.com/
+license: MIT
+gameplaneMinVersion: 0.2.0

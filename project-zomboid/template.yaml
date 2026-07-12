@@ -1,0 +1,194 @@
+# Gameplane GameTemplate for Project Zomboid (dedicated server).
+#
+# Backed by sknnr/zomboid-dedicated-server (https://github.com/jsknnr/project-
+# zomboid-server). The previous draft's image (cm2network/projectzomboid)
+# does not exist on Docker Hub at all — this replaces it.
+#
+# RCON is genuine Source-RCON-protocol on this game (independent evidence:
+# every actively-tested Go/Python RCON library that lists PZ support uses
+# the plain Source-RCON wire protocol, no special-casing) — the operator's
+# default operator-generated-Secret + passwordEnv flow works unmodified,
+# same as minecraft-java. Workshop mods are entirely config-value-driven
+# (MOD_IDS/MOD_NAMES, resolved by the game's own SteamCMD sync at boot),
+# so no capabilities.mods block is declared — there is nothing for a
+# file-drop model to manage.
+#
+# RCON runs on the game's canonical port, 27015 (spec.rcon.port is now
+# wired through to the agent, so no port-relocation workaround is needed).
+#
+# Env var names below were re-verified against jsknnr/project-zomboid-
+# server's current README (the source for the sknnr/zomboid-dedicated-
+# server image): MOD_IDS, PUBLIC, MAX_MEMORY (required), DIRECT_PORT, and
+# PVP are all real, documented env vars on this image under those exact
+# names — no renames needed here.
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/project-zomboid/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: project-zomboid
+  labels:
+    gameplane.local/module: project-zomboid
+spec:
+  displayName: Project Zomboid
+  game: project-zomboid
+  version: 1.0.0
+  accentColor: "#336600"
+  description: |
+    Project Zomboid dedicated server using
+    [sknnr/zomboid-dedicated-server](https://github.com/jsknnr/project-zomboid-server).
+    RCON-backed console and moderation, Steam Workshop mods via the two
+    ID lists Project Zomboid itself uses to sync content.
+
+  image: sknnr/zomboid-dedicated-server:latest
+
+  env:
+    # Fixed to match rcon.port / the declared ports[] below — not exposed
+    # in the wizard, since editing it independently would desync the
+    # Service/agent connection from what the game actually binds.
+    - name: RCON_PORT
+      value: "27015"
+    - name: GAME_PORT
+      value: "16261"
+    - name: DIRECT_PORT
+      value: "16262"
+
+  ports:
+    - name: game
+      containerPort: 16261
+      protocol: UDP
+      advertise: true
+    - name: direct
+      containerPort: 16262
+      protocol: UDP
+      advertise: true
+    # RCON is a separate TCP port on this game (independent of the game
+    # port, unlike CS2/GMod) — a matching ports[] entry is required for it
+    # to be dialable at all.
+    - name: rcon
+      containerPort: 27015
+      protocol: TCP
+      advertise: false
+
+  # /home/steam covers both the image's install tree (.../zomboid) and its
+  # save/config tree (.../zomboid_data) under one PVC.
+  storage:
+    size: 15Gi
+    mountPath: /home/steam
+
+  resources:
+    requests:
+      cpu: "1"
+      memory: 4Gi
+    limits:
+      cpu: "4"
+      memory: 8Gi
+
+  rcon:
+    protocol: source
+    port: 27015
+    # PasswordSecretRef left unset — the operator generates a password and
+    # injects it as RCON_PASSWORD, same as minecraft-java.
+    passwordEnv: RCON_PASSWORD
+
+  capabilities:
+    # `save` then `quit` — quit alone auto-saves, but an explicit save
+    # first is the commonly recommended safe sequence.
+    lifecycle:
+      stop: ["save", "quit"]
+    # `save` is a real, idempotent force-save command; there's no PZ
+    # equivalent of Minecraft's save-off/save-on write-pause pair, so
+    # quiesce and unquiesce both just force a flush around the snapshot.
+    quiesce:
+      quiesce: ["save"]
+      unquiesce: ["save"]
+    actions:
+      - id: broadcast
+        displayName: Broadcast
+        description: Send a server message to everyone.
+        icon: megaphone
+        command: 'servermsg "{{.Params.message}}"'
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+      - id: save-world
+        displayName: Save world
+        icon: save
+        command: "save"
+
+  probes:
+    # Game/direct ports are UDP; RCON is the only TCP port, so it's the
+    # probe target (same pattern as factorio).
+    readiness:
+      tcpSocket:
+        port: rcon
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      failureThreshold: 10
+    liveness:
+      tcpSocket:
+        port: rcon
+      initialDelaySeconds: 90
+      periodSeconds: 30
+      failureThreshold: 5
+
+  configSchema:
+    - name: SERVER_NAME
+      displayName: Server name
+      type: string
+      default: "Gameplane PZ Server"
+    - name: MAX_MEMORY
+      displayName: JVM memory
+      description: Required by the image, e.g. "4096m".
+      type: string
+      required: true
+      default: "4096m"
+    - name: ADMIN_USERNAME
+      displayName: Admin username
+      type: string
+      default: "admin"
+    - name: ADMIN_PASSWORD
+      displayName: Admin password
+      description: In-game admin account, created on first boot.
+      type: password
+      required: true
+    - name: SERVER_PASSWORD
+      displayName: Join password
+      description: Leave blank for an open server.
+      type: password
+      default: ""
+    - name: MAX_PLAYERS
+      displayName: Max players
+      type: int
+      default: "16"
+    - name: PUBLIC
+      displayName: List publicly
+      type: bool
+      default: "true"
+    - name: PVP
+      displayName: PvP enabled
+      type: bool
+      default: "true"
+    - name: MAP_NAMES
+      displayName: Maps
+      description: Semicolon-separated map list.
+      type: string
+      default: "Muldraugh, KY"
+    - name: MOD_IDS
+      displayName: Workshop item IDs
+      description: Semicolon-separated Steam Workshop item IDs.
+      type: string
+      default: ""
+    - name: MOD_NAMES
+      displayName: Mod IDs
+      description: Semicolon-separated internal mod.info IDs, matching MOD_IDS in order — both are required together for a mod to load.
+      type: string
+      default: ""
+    - name: AUTOSAVE_INTERVAL
+      displayName: Autosave interval (minutes)
+      type: int
+      default: "15"

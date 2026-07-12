@@ -1,0 +1,27 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: v-rising-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: v-rising
+
+  config:
+    SERVERNAME: "Gameplane V Rising Server"
+    WORLDNAME: "world1"
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 32876
+      - name: query
+        nodePort: 32877
+
+  storage:
+    size: 20Gi
+
+  resources:
+    requests: { cpu: 1, memory: 4Gi }
+    limits:   { cpu: 4, memory: 8Gi }

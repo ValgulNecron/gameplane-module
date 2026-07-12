@@ -1,0 +1,9 @@
+apiVersion: gameplane.local/module/v1
+name: garrys-mod
+displayName: Garry's Mod
+version: 2.0.0
+game: garrys-mod
+summary: Garry's Mod dedicated server (ceifa/garrysmod) with Workshop addon collections via launch args. No RCON console or panel-managed addons — this image bakes them in.
+homepage: https://gmod.facepunch.com/
+license: MIT
+gameplaneMinVersion: 0.2.0

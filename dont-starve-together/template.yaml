@@ -1,0 +1,51 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: dont-starve-together
+  labels:
+    gameplane.local/module: dont-starve-together
+spec:
+  displayName: Don't Starve Together
+  game: dont-starve-together
+  version: 1.0.0
+  accentColor: "#cc0000"
+  description: DST dedicated server.
+  image: jamesits/dst-server:latest
+  ports:
+    - name: game
+      containerPort: 10999
+      protocol: UDP
+      advertise: true
+    - name: caves
+      containerPort: 11000
+      protocol: UDP
+      advertise: true
+    - name: steam1
+      containerPort: 12346
+      protocol: UDP
+      advertise: false
+    - name: steam2
+      containerPort: 12347
+      protocol: UDP
+      advertise: false
+  storage:
+    size: 5Gi
+    mountPath: /data
+  resources:
+    requests: {cpu: "1", memory: 1Gi}
+    limits: {cpu: "2", memory: 2Gi}
+  rcon:
+    protocol: none
+  consoleMode: pty
+  capabilities:
+    lifecycle:
+      # DST does not save on SIGTERM; these Lua console commands save and
+      # shut down cleanly. Note: the stdin attachment may reach the master
+      # shard or caves shard depending on container startup order.
+      stop: ["c_save()", "c_shutdown(true)"]
+  configSchema:
+    - name: DST_CLUSTER_TOKEN
+      displayName: Cluster Token
+      description: "Obtain from Klei account portal at accounts.klei.com. Required for public/online servers."
+      type: password
+      required: false
