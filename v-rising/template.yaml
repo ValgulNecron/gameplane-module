@@ -1,0 +1,105 @@
+# Gameplane GameTemplate for V Rising (dedicated server).
+#
+# Backed by trueosiris/vrising (Ubuntu + Wine). The image documents two
+# persistent bind mounts — /mnt/vrising/server (install) and
+# /mnt/vrising/persistentdata (world/settings) — both meant to survive
+# restarts per the project's own docker-compose example (steamcmd's
+# app_update does an in-place update, it doesn't wipe the tree). Gameplane
+# has one PVC per template, so storage.mountPath is their common parent
+# (/mnt/vrising) and both subdirectories land on it.
+#
+# RCON is genuine Source RCON (confirmed via Stunlock's own instructions and
+# gorcon/rcon-cli support), enabled via ServerHostSettings.json's Rcon
+# block. The image has no native env toggle for it, but does support a
+# generic HOST_SETTINGS_<Path>__<To>__<Key> passthrough that patches the
+# JSON at boot — used below to turn RCON on and to receive the operator-
+# generated password.
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/v-rising/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: v-rising
+  labels:
+    gameplane.local/module: v-rising
+spec:
+  displayName: V Rising
+  game: v-rising
+  version: 1.0.0
+  accentColor: "#8b0000"
+  description: |
+    V Rising dedicated server using
+    [trueosiris/vrising](https://github.com/TrueOsiris/docker-vrising).
+    Source RCON powers the console, broadcast, and stop actions.
+
+  image: trueosiris/vrising:latest
+
+  # Turns RCON on in ServerHostSettings.json via the image's generic
+  # HOST_SETTINGS_ passthrough (double-underscore = nested JSON key). The
+  # password itself is injected separately below via rcon.passwordEnv.
+  env:
+    - name: HOST_SETTINGS_Rcon__Enabled
+      value: "true"
+
+  ports:
+    - name: game
+      containerPort: 9876
+      protocol: UDP
+      advertise: true
+    - name: query
+      containerPort: 9877
+      protocol: UDP
+      advertise: true
+    - name: rcon
+      containerPort: 25575
+      protocol: TCP
+      advertise: false
+
+  storage:
+    # Covers both /mnt/vrising/server (game install, ~10-15GB) and
+    # /mnt/vrising/persistentdata (world/settings) as subdirectories of one
+    # PVC. Not verified against an official Stunlock sizing guide — revisit
+    # if long-running worlds outgrow it.
+    size: 20Gi
+    mountPath: /mnt/vrising
+
+  resources:
+    requests: {cpu: "1", memory: 4Gi}
+    limits: {cpu: "4", memory: 8Gi}
+
+  rcon:
+    protocol: source
+    port: 25575
+    passwordEnv: HOST_SETTINGS_Rcon__Password
+
+  capabilities:
+    # "shutdown <times> <message>" is Stunlock's own documented RCON
+    # command; 0 requests an immediate (non-delayed) shutdown so the
+    # operator's synchronous stop-and-wait doesn't time out waiting on a
+    # delayed countdown.
+    lifecycle:
+      stop: ["shutdown 0 Server shutting down"]
+    actions:
+      - id: broadcast
+        displayName: Broadcast
+        icon: megaphone
+        command: "announce {{.Params.message}}"
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+
+  configSchema:
+    - name: SERVERNAME
+      displayName: Server Name
+      type: string
+      required: true
+      default: "Gameplane V Rising Server"
+    - name: WORLDNAME
+      displayName: World
+      description: Save subdirectory name.
+      type: string
+      default: "world1"

@@ -1,0 +1,186 @@
+# Gameplane GameTemplate for Garry's Mod (dedicated server).
+#
+# Backed by ceifa/garrysmod (https://github.com/ceifa/garrysmod-docker). The
+# `latest`/`debian` tag BAKES the game at build time (verified against the
+# repo's Dockerfile): a `gmod` build stage runs `steamcmd +app_update 4020
+# validate`, and the final stage does
+# `COPY --from=gmod --chown=steam:steam /home/gmod/server /home/gmod/server`.
+# The image declares exactly ONE volume:
+# `VOLUME ["/home/gmod/server/garrysmod/data"]`. `addons/`, `gamemodes/`,
+# `maps/`, `cfg/`, and `lua/` are baked into that same image layer and are
+# explicitly NOT volumes (the repo's README: "addons and gamemodes are
+# intentionally not volumes so they can be baked into a derived image ... or
+# bind-mounted"). Mounting a PVC anywhere in that tree other than exactly
+# `.../garrysmod/data` shadows the baked content and srcds fails to start.
+#
+# storage.mountPath is therefore `/home/gmod/server/garrysmod/data` — the
+# ONE path this image is actually designed to persist. Consequences,
+# verified against the real image (assets/start.sh, README) rather than
+# assumed:
+#
+#   - No RCON. Source dedicated servers only take `rcon_password` two ways:
+#     an auto-executed `garrysmod/cfg/server.cfg` (baked, unreachable from
+#     this mount — configFiles paths may not contain ".." and the CRD
+#     enforces that: operator/api/v1alpha1/gametemplate_types.go's
+#     ConfigFile.Path XValidation), or a `+rcon_password <value>` launch
+#     token. The only launch-arg hook this image exposes is the free-text
+#     `ARGS` env (assets/start.sh: `exec .../srcds_run ... ${ARGS}`, unquoted
+#     so it word-splits) — but GameTemplate has no mechanism to compose a
+#     generated secret into a user-editable string field, and this image has
+#     no dedicated RCON-password env var (confirmed: README's documented env
+#     list is PRODUCTION/NAME/MAXPLAYERS/GAMEMODE/MAP/PORT/GSLT/ARGS/
+#     AUTOUPDATE/PUID/PGID — nothing RCON-shaped). So there is no sound way
+#     to deliver a password to srcds under this mount. Per the module review
+#     instructions, that means protocol: none rather than a guessed config.
+#     (Separately, and moot given the above: the agent's RCON dial port is
+#     STILL hardcoded — agent/cmd/main.go:61 `flag.IntVar(&rconPort,
+#     "rcon-port", 25575, ...)` — and operator/internal/controller/
+#     gameserver_controller.go's buildAgentContainer never passes
+#     `--rcon-port`, so GameTemplate.spec.rcon.port is not wired through
+#     despite being documented as configurable. Confirmed unfixed on this
+#     branch; restoring RCON to 27015 would silently break it even if the
+#     password problem above didn't already rule RCON out.)
+#   - No PTY console either: this image's own foreground process (after
+#     first-boot update) genuinely is srcds (assets/start.sh execs it as the
+#     final command, so it IS PID 1 and does read an attached terminal) —
+#     PTY *would* work here. It's omitted anyway only because there is no
+#     way to authenticate an admin session without RCON's `say`-style
+#     capability commands; consoleMode is left unset, which resolves to
+#     "none" per the CRD default now that rcon.protocol is "none".
+#   - No mods capability: the per-loader/legacy mod volume is always
+#     mounted at storage.mountPath/<path> (operator/internal/controller/
+#     gameserver_version.go's modVolumeMount: `path.Join(effectiveMountPath
+#     (tmpl), spec.Path)`), i.e. always nested under `.../garrysmod/data`.
+#     srcds reads addons from `garrysmod/addons`, a SIBLING of `data`, not a
+#     child of it — so no path the operator can mount there ever lands where
+#     srcds looks, and the CRD rejects ".." in mods paths anyway
+#     (ModsSpec.Path XValidation: `!self.contains('..')`). Structurally
+#     impossible with this image, not just unconfigured.
+#   - Workshop addons still work with none of the above: `+host_workshop_
+#     collection <id> -authkey <key>` via the ARGS field downloads and
+#     mounts a Workshop collection at boot without touching the addons dir
+#     or RCON at all (this is the image's own documented pattern).
+#   - Ports restored to the image's real EXPOSE'd/canonical values (Dockerfile:
+#     `EXPOSE 27015` / `27015/udp` / `27005/udp`; README ports table
+#     confirms `27015 TCP/UDP` game+pings, `27005 UDP` client) rather than
+#     the previous draft's non-standard 25575 (a workaround for the same
+#     now-still-broken agent rcon-port hardcode, but Source RCON was never
+#     reachable through it either way — irrelevant now that RCON is off).
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/garrys-mod/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: garrys-mod
+  labels:
+    gameplane.local/module: garrys-mod
+spec:
+  displayName: Garry's Mod
+  game: garrys-mod
+  version: 2.0.0
+  accentColor: "#1194f0"
+  description: |
+    Garry's Mod dedicated server using
+    [ceifa/garrysmod](https://github.com/ceifa/garrysmod-docker). Workshop
+    addon collections auto-download via launch args. No RCON console or
+    panel-managed addons folder — see the README for why (this image bakes
+    `addons/`, `gamemodes/`, and `cfg/` into the image and only persists
+    `garrysmod/data`).
+
+  image: ceifa/garrysmod:latest
+
+  env:
+    # Debian production image variant (per the image's own recommendation
+    # for dedicated hosting rather than the dev/ubuntu variants).
+    - name: PRODUCTION
+      value: "1"
+    # Canonical Source dedicated-server port (matches the image's own
+    # EXPOSE and the ports[] below).
+    - name: PORT
+      value: "27015"
+
+  ports:
+    - name: game
+      containerPort: 27015
+      protocol: UDP
+      advertise: true
+    # Source engine also opens a TCP listener on the same port number for
+    # pings/RCON regardless of whether rcon_password is set (confirmed by
+    # this image's own HEALTHCHECK, which greps `netstat -ln` for a LISTEN
+    # entry on $PORT — that only works if the TCP side is bound). Not
+    # advertised since it carries no player traffic; used below as the
+    # probe target.
+    - name: game-tcp
+      containerPort: 27015
+      protocol: TCP
+      advertise: false
+    # Documented as an additional exposed port on this image; some Source
+    # engine servers use it internally (demo/shadow-client handling).
+    - name: client
+      containerPort: 27005
+      protocol: UDP
+      advertise: false
+
+  storage:
+    size: 15Gi
+    mountPath: /home/gmod/server/garrysmod/data
+
+  resources:
+    requests:
+      cpu: "1"
+      memory: 2Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+
+  # No RCON — see the header comment for why (baked cfg/, no password env,
+  # and the agent's rcon-port wiring is unfixed on top of that anyway).
+  rcon:
+    protocol: none
+
+  probes:
+    readiness:
+      tcpSocket:
+        port: game-tcp
+      initialDelaySeconds: 20
+      periodSeconds: 10
+      failureThreshold: 10
+    liveness:
+      tcpSocket:
+        port: game-tcp
+      initialDelaySeconds: 60
+      periodSeconds: 30
+      failureThreshold: 5
+
+  configSchema:
+    - name: NAME
+      displayName: Server name
+      type: string
+      default: "Gameplane Garry's Mod Server"
+    - name: GSLT
+      displayName: Game Server Login Token
+      description: Steam GSLT so the server can appear in the server browser. Leave blank for LAN/direct-connect only.
+      type: password
+      default: ""
+    - name: MAXPLAYERS
+      displayName: Max players
+      type: int
+      default: "16"
+    - name: GAMEMODE
+      displayName: Gamemode
+      type: string
+      default: "sandbox"
+    - name: MAP
+      displayName: Map
+      type: string
+      default: "gm_construct"
+    - name: ARGS
+      displayName: Extra launch args
+      description: >-
+        Raw srcds launch arguments, appended verbatim. Use this for a
+        Workshop addon collection, e.g. "+host_workshop_collection
+        <id> -authkey <steam-web-api-key>".
+      type: string
+      default: ""

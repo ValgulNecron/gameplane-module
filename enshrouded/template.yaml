@@ -1,0 +1,41 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: enshrouded
+  labels:
+    gameplane.local/module: enshrouded
+spec:
+  displayName: Enshrouded
+  game: enshrouded
+  version: 1.0.0
+  accentColor: "#2a4b7c"
+  description: Enshrouded dedicated server.
+  image: mornedhels/enshrouded-server:latest
+  ports:
+    - name: game
+      containerPort: 15636
+      protocol: UDP
+      advertise: true
+    - name: query
+      containerPort: 15637
+      protocol: UDP
+      advertise: false
+  storage:
+    size: 25Gi
+    mountPath: /opt/enshrouded
+  resources:
+    requests: {cpu: "2", memory: 8Gi}
+    limits: {cpu: "4", memory: 16Gi}
+  rcon:
+    protocol: none
+  consoleMode: none
+  configSchema:
+    - name: SERVER_NAME
+      displayName: Server Name
+      type: string
+      default: "Gameplane Enshrouded Server"
+    - name: SERVER_SLOT_COUNT
+      displayName: Max Players
+      type: int
+      default: "16"
+      description: "Number of player slots (1-16)"

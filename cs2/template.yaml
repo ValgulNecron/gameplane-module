@@ -1,0 +1,120 @@
+# Gameplane GameTemplate for Counter-Strike 2 (dedicated server).
+#
+# Backed by joedwards32/CS2 (cm2network/cs2 is a downstream mirror of the
+# same project; we point at the upstream directly). CS2 is stateless (no
+# persistent world/save), so lifecycle.stop is a nice-to-have, not a
+# safety-critical sequence like a survival game's world save.
+#
+# RCON is classic Source RCON on the game port (27015 by default) per
+# Valve's own protocol spec. Metamod/CounterStrikeSharp plugins have no
+# version/loader dimension, so mods use the legacy single-path form.
+# consoleMode is left unset: RCON is configured, so it defaults to "rcon".
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/cs2/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: cs2
+  labels:
+    gameplane.local/module: cs2
+spec:
+  displayName: Counter-Strike 2
+  game: cs2
+  version: 1.0.0
+  accentColor: "#f4a900"
+  description: |
+    Counter-Strike 2 dedicated server using
+    [joedwards32/CS2](https://github.com/joedwards32/CS2). Source RCON powers
+    the console and the broadcast/stop actions; Metamod and
+    CounterStrikeSharp plugins install under `game/csgo/addons`.
+
+  image: joedwards32/cs2:latest
+
+  ports:
+    - name: game
+      containerPort: 27015
+      protocol: UDP
+      advertise: true
+    # CS2's Source RCON rides the game port number, but as a separate TCP
+    # listener — declare it explicitly so it isn't mistaken for a UDP-only
+    # service.
+    - name: rcon
+      containerPort: 27015
+      protocol: TCP
+      advertise: false
+    # GOTV/SourceTV relay port — the image's own docker run examples
+    # always publish this alongside the game port. Off by default
+    # (TV_ENABLE=0 on the image); set GameServer.spec.env to turn it on.
+    - name: gotv
+      containerPort: 27020
+      protocol: UDP
+      advertise: true
+
+  storage:
+    # joedwards32/CS2's own docs state a 60GB minimum for the install path.
+    size: 60Gi
+    mountPath: /home/steam/cs2-dedicated
+
+  resources:
+    requests: {cpu: "1", memory: 2Gi}
+    limits: {cpu: "4", memory: 4Gi}
+
+  rcon:
+    protocol: source
+    port: 27015
+    passwordEnv: CS2_RCONPW
+
+  capabilities:
+    # sv_shutdown waits for the CURRENT match (and anything queued) to
+    # finish before exiting — mid-match, that means the operator blocks
+    # for the full stopGracePeriodSeconds on every single stop. CS2 has
+    # no world/save state to protect, so there's nothing gained by
+    # waiting: quit exits immediately.
+    lifecycle:
+      stop: ["quit"]
+    actions:
+      - id: broadcast
+        displayName: Broadcast
+        icon: megaphone
+        command: 'say "{{.Params.message}}"'
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+    # No version/loader axis for CS2, so mods use the legacy single-path
+    # form. Metamod stays at game/csgo/addons; CounterStrikeSharp nests one
+    # level deeper (game/csgo/addons/counterstrikesharp/plugins) but is
+    # still reachable since listing/removal work on the whole tree.
+    mods:
+      # .so covers Metamod's Linux plugin binaries; .dll covers
+      # CounterStrikeSharp plugins (.NET assemblies are .dll on every OS).
+      # Metamod/CSSharp's own loader bootstrap (metamod.vdf + the metamod/
+      # subfolder) is a one-time manual setup via the Files tab, not
+      # something the Mods tab installs — same caveat as BepInEx elsewhere.
+      path: game/csgo/addons
+      extensions: [".dll", ".so"]
+      install:
+        allowedHosts:
+          - github.com
+          - .githubusercontent.com
+        maxSizeMB: 256
+
+  configSchema:
+    - name: SRCDS_TOKEN
+      displayName: GSLT (Steam Login Token)
+      description: Game Server Login Token from https://steamcommunity.com/dev/managegameservers.
+      type: string
+      required: true
+      default: ""
+    - name: CS2_HOST_WORKSHOP_COLLECTION
+      displayName: Workshop Collection ID
+      description: Steam Workshop collection to load on start. Leave blank to use the default maps.
+      type: string
+      default: ""
+    - name: CS2_HOST_WORKSHOP_MAP
+      displayName: Workshop Map ID
+      type: string
+      default: ""

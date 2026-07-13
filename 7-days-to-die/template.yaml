@@ -1,0 +1,145 @@
+# Gameplane GameTemplate for 7 Days to Die (dedicated server).
+#
+# Backed by vinanrra/7dtd-server (https://github.com/vinanrra/Docker-7DaysToDie),
+# a LinuxGSM wrapper. Verified against the repo's Dockerfile and docs/
+# parameters.md rather than assumed:
+#
+#   - The Dockerfile declares FIVE separate volumes, none of them nested
+#     inside another: `/home/sdtdserver/serverfiles/` (install + Mods/ +
+#     serverconfig.xml), `/home/sdtdserver/.local/share/7DaysToDie`
+#     (world saves — "where maps are stored"), `/home/sdtdserver/log/`,
+#     `/home/sdtdserver/lgsm/backup/`, and
+#     `/home/sdtdserver/lgsm/config-lgsm/sdtdserver/`. The previous draft's
+#     `/home/sdtd/server` doesn't exist in the image at all — the PVC bound
+#     to empty air, so the world lived on the container's ephemeral layer
+#     and was destroyed on every restart, and backups snapshotted nothing.
+#   - The task's own suggested fix (mount the common parent
+#     `/home/sdtdserver`) is ALSO wrong: `ENTRYPOINT ["/home/sdtdserver/
+#     user.sh"]`, `install.sh`, `scripts/`, and the LinuxGSM checkout are
+#     baked directly under `/home/sdtdserver` as SIBLINGS of the five
+#     volumes above. An empty PVC mounted at the parent shadows the
+#     entrypoint script itself — the container wouldn't start at all.
+#   - Gameplane supports exactly one data mount per GameServer. This image's
+#     five volumes are not nested under a common safe ancestor, so one PVC
+#     cannot cover all five. storage.mountPath is set to
+#     `/home/sdtdserver/.local/share/7DaysToDie` — the exact, only-that-
+#     directory volume the game's world saves live in — because losing
+#     player-generated world state on every restart is what this template
+#     was broken for; the game reinstalling itself (serverfiles/) or losing
+#     logs/lgsm-backups on restart is slow and wasteful but not destructive.
+#     See the README for the consequences this forces (no configSchema, no
+#     mods capability, no telnet password wiring) and why each is correct
+#     given the mount, not merely unconfirmed.
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/7-days-to-die/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: 7-days-to-die
+  labels:
+    gameplane.local/module: 7-days-to-die
+spec:
+  displayName: 7 Days to Die
+  game: 7-days-to-die
+  version: 2.0.0
+  accentColor: "#8b0000"
+  description: |
+    7 Days to Die dedicated server using
+    [vinanrra/7dtd-server](https://github.com/vinanrra/Docker-7DaysToDie)
+    (LinuxGSM). World saves persist across restarts. No RCON console, no
+    panel-managed mods, and no wizard server settings — see the README for
+    why: this image spreads config/mods/world across five directories
+    Gameplane's single data volume can't all cover at once, and world
+    persistence was the fix this template needed.
+
+  image: vinanrra/7dtd-server:latest
+
+  env:
+    # Required by the image — with no env at all (the previous draft's
+    # state) the container has no defined start behavior. START_MODE=1 is
+    # LinuxGSM's documented "start server" mode (0/2/4 install/update/backup
+    # then exit, which would crashloop a GameServer pod).
+    - name: START_MODE
+      value: "1"
+
+  ports:
+    - name: game
+      containerPort: 26900
+      protocol: TCP
+      advertise: true
+    - name: game-udp
+      containerPort: 26900
+      protocol: UDP
+      advertise: true
+    - name: game2
+      containerPort: 26901
+      protocol: UDP
+      advertise: true
+    - name: game3
+      containerPort: 26902
+      protocol: UDP
+      advertise: true
+    # Telnet console port. Declared (per the image's docs) even though RCON
+    # is off below — see the README for why the password can't be wired
+    # given the mount this template needs for world persistence.
+    - name: telnet
+      containerPort: 8081
+      protocol: TCP
+      advertise: false
+
+  storage:
+    size: 15Gi
+    mountPath: /home/sdtdserver/.local/share/7DaysToDie
+
+  resources:
+    requests:
+      cpu: "2"
+      memory: 6Gi
+    limits:
+      cpu: "4"
+      memory: 12Gi
+
+  # No RCON — see the header comment and README. TelnetPassword lives in
+  # serverconfig.xml under serverfiles/, which is not reachable from the
+  # world-saves mount this template uses, and this image documents no env
+  # var that sets it instead. A wrong config is worse than none.
+  rcon:
+    protocol: none
+
+  # No lifecycle.stop capability (requires RCON). Not a gap: the image's own
+  # entrypoint (user.sh) traps SIGINT/SIGTERM and runs LinuxGSM's own
+  # `sdtdserver stop`, which performs the game's graceful save+shutdown
+  # itself — this game already saves on SIGTERM.
+  #
+  # No mods capability either (see README — Mods/ lives under serverfiles/,
+  # unreachable from this mount). These fields are the image's OWN
+  # first-install mod installer (scripts/Mods/*.sh), driven by env vars
+  # independent of storage.mountPath, so they still work: install runs
+  # before the pod is considered ready, and re-runs (fetching fresh) on
+  # every restart since serverfiles/ isn't persisted either.
+  configSchema:
+    - name: UNDEAD_LEGACY
+      displayName: Install Undead Legacy
+      description: Overhaul mod. Mutually exclusive with Darkness Falls (the install step aborts if both are set).
+      type: enum
+      enum: ["NO", "YES"]
+      default: "NO"
+    - name: DARKNESS_FALLS
+      displayName: Install Darkness Falls
+      description: Overhaul mod. Mutually exclusive with Undead Legacy (the install step aborts if both are set).
+      type: enum
+      enum: ["NO", "YES"]
+      default: "NO"
+    - name: ALLOC_FIXES
+      displayName: Install Alloc's Fixes
+      description: Server-side fixes/tools mod (always installed automatically if either overhaul mod above is enabled).
+      type: enum
+      enum: ["NO", "YES"]
+      default: "NO"
+    - name: MODS_URLS
+      displayName: Additional mod URLs
+      description: Comma-separated list of direct .zip/.rar mod URLs to install on first start, e.g. "https://example.com/mod1.zip,https://example.com/mod2.zip".
+      type: string
+      default: ""

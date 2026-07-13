@@ -1,0 +1,192 @@
+# Gameplane GameTemplate for ARK: Survival Ascended (dedicated server).
+#
+# Backed by mschnitzer/asa-linux-server
+# (https://github.com/mschnitzer/ark-survival-ascended-linux-container-image),
+# a native-Linux (Proton) ASA server image. The previous draft's image
+# (thmhoag/arkserver) targets the older ARK: Survival Evolved, not
+# Ascended, and has been archived (read-only) since 2023 — this replaces
+# it with an ASA-specific, actively maintained image.
+#
+# RCON here is genuine Source RCON (every third-party RCON client that
+# supports ASA — mcrcon, BattleMetrics, this image's own asa-ctrl —
+# implements the plain Source wire protocol against it unmodified), on
+# the image's own canonical port 27020. spec.rcon.port is wired through
+# to the agent, so no port-relocation workaround is needed.
+#
+# GameUserSettings.ini IS DELIBERATELY NOT RENDERED BY THIS TEMPLATE. ASA
+# owns and rewrites that file wholesale — every setting an admin tunes
+# in-game (difficulty, taming rates, structure limits, ...) persists
+# there — and the operator's config-init would copy a freshly rendered
+# version over it on *every* pod start, silently wiping all of that on
+# the next restart (see docs/module-authoring.md's configFiles section).
+# So this template renders only a Gameplane-owned rcon-password.txt (a
+# file ASA never reads) via rcon.passwordFile, which is safe to
+# re-render every start. The admin/RCON password itself must be copied
+# into GameUserSettings.ini's [ServerSettings] block by hand, once, via
+# the Files tab — see README.md "Console & RCON" for the exact steps.
+# This mirrors the one-time bootstrap the cs2 module uses for Metamod: a
+# thing the game owns that Gameplane sets up once instead of every
+# restart. RCONPort/RCONEnabled are different — the image's own docs
+# show those as ordinary ASA_START_PARAMS launch flags (evaluated fresh
+# every start, not something the game persists independently), so they
+# stay in the launch-parameter default below same as before.
+#
+# The server's display name (SessionName) is likewise randomly generated
+# on first boot and only changeable by editing GameUserSettings.ini
+# directly — not something this template can set without clobbering
+# game-owned state, so there's no SessionName wizard field either.
+#
+# Map, listen port, and player count are one combined launch-parameter
+# string on this image (ASA_START_PARAMS) rather than discrete env vars,
+# so it's exposed as a single raw-passthrough config field rather than
+# several wizard fields that couldn't actually compose into it.
+#
+# The image documents four separate Docker volumes (Steam cache, SteamCMD
+# cache, server-files, cluster-shared) with no shared parent besides
+# /home/gameserver — this template mounts that whole parent as one PVC so
+# nothing is silently lost on restart (see storage.mountPath below).
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/ark-survival-ascended/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: ark-survival-ascended
+  labels:
+    gameplane.local/module: ark-survival-ascended
+spec:
+  displayName: "ARK: Survival Ascended"
+  game: ark-survival-ascended
+  version: 1.0.0
+  accentColor: "#00b2e2"
+  description: |
+    ARK: Survival Ascended dedicated server using
+    [mschnitzer/asa-linux-server](https://github.com/mschnitzer/ark-survival-ascended-linux-container-image).
+    RCON-backed console and moderation. Mods install via the game's own
+    `-mods=` CurseForge launch parameter, not a panel-managed folder — see
+    the ASA_START_PARAMS field below.
+
+  image: mschnitzer/asa-linux-server:latest
+
+  env:
+    - name: ENABLE_DEBUG
+      value: "0"
+
+  ports:
+    - name: game
+      containerPort: 7777
+      protocol: UDP
+      advertise: true
+    - name: peer
+      containerPort: 7778
+      protocol: UDP
+      advertise: true
+    # No query port: the image's own README states plainly that "ASA does
+    # no longer offer a way to query the server, so there's no query
+    # port" — only the game port and RCON need to be reachable.
+    - name: rcon
+      containerPort: 27020
+      protocol: TCP
+      advertise: false
+
+  # Covers all four of the image's documented volumes (Steam cache,
+  # SteamCMD cache, server-files, cluster-shared) under one PVC — server-
+  # files/ is what actually holds saves and GameUserSettings.ini.
+  storage:
+    size: 30Gi
+    mountPath: /home/gameserver
+
+  resources:
+    requests:
+      cpu: "2"
+      memory: 10Gi
+    limits:
+      cpu: "6"
+      memory: 20Gi
+
+  rcon:
+    protocol: source
+    port: 27020
+    passwordFile: rcon-password.txt
+
+  capabilities:
+    # SaveWorld then DoExit is the community-consensus clean shutdown;
+    # SaveWorld alone before a SIGTERM is documented as not reliably
+    # sufficient.
+    lifecycle:
+      stop: ["SaveWorld", "DoExit"]
+    quiesce:
+      quiesce: ["SaveWorld"]
+      unquiesce: ["SaveWorld"]
+    actions:
+      - id: broadcast
+        displayName: Broadcast
+        description: Send a chat message to everyone on the server.
+        icon: megaphone
+        command: "ServerChat {{.Params.message}}"
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+      - id: save-world
+        displayName: Save world
+        icon: save
+        command: "SaveWorld"
+
+  probes:
+    # Game/peer ports are UDP; RCON is the only TCP port, so it's the
+    # probe target (same pattern as factorio).
+    readiness:
+      tcpSocket:
+        port: rcon
+      initialDelaySeconds: 60
+      periodSeconds: 15
+      failureThreshold: 20
+    liveness:
+      tcpSocket:
+        port: rcon
+      initialDelaySeconds: 180
+      periodSeconds: 30
+      failureThreshold: 5
+
+  # rcon-password.txt is a Gameplane-owned file ASA never reads or writes,
+  # so re-rendering it on every restart is safe — unlike
+  # GameUserSettings.ini, which is deliberately NOT declared here (see
+  # header comment).
+  configFiles:
+    - path: rcon-password.txt
+      template: "{{ .Values.SERVER_ADMIN_PASSWORD }}"
+
+  configSchema:
+    - name: ASA_START_PARAMS
+      displayName: Launch parameters
+      description: >-
+        Raw ASA launch string: map + ?query=params, then space-separated
+        -Flag=value CLI args, e.g. player count is " -WinLiveMaxPlayers=70"
+        (a separate arg, not a ?query fragment — matches the image's own
+        documented example). Append " -mods=<curseforge-id>,<curseforge-id>"
+        to install CurseForge mods (the server downloads them itself at
+        boot). Do NOT put ServerAdminPassword here — the image's own docs
+        warn against setting it on the command line. Set it via the
+        Admin / RCON password field below instead, and see README.md for
+        the one-time step needed to make ASA actually accept it.
+      type: string
+      required: true
+      default: "TheIsland_WP?listen?Port=7777?RCONPort=27020?RCONEnabled=True -WinLiveMaxPlayers=70"
+    - name: SERVER_ADMIN_PASSWORD
+      displayName: Admin / RCON password
+      description: >-
+        The password Gameplane's Console/RCON connection and moderation
+        actions authenticate with. Rendered into a Gameplane-owned
+        rcon-password.txt on every start, but ASA's own RCON server only
+        accepts it once the identical value is also set as
+        ServerAdminPassword in GameUserSettings.ini — a one-time manual
+        step via the Files tab (see README.md). Gameplane can't set this
+        automatically: ASA owns and rewrites that whole file, so anything
+        the operator wrote there would be wiped on the next restart
+        anyway.
+      type: password
+      required: true
+      target: file

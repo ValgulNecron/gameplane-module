@@ -1,0 +1,118 @@
+# Gameplane GameTemplate for Rust (dedicated server).
+#
+# Backed by didstopia/rust-server. Rust's RCON is WebSocket-only
+# (Facepunch's own `rcon.web`/webrcon) — it does NOT speak the Source RCON
+# wire protocol the agent implements, and there's no raw-TCP fallback. So
+# rcon.protocol is "none" here; RCON-transport capabilities (players list,
+# moderation, actions) are unavailable for Rust in Gameplane today.
+#
+# RustDedicated does accept an attached interactive console (every
+# Docker/tmux community wrapper drives it this way), which matches
+# consoleMode: pty. The clean-stop sequence ("server.save" then "quit") is
+# real and documented, but requires the operator's PTY-stdin stop path
+# (tracked separately — see Backlog task "Operator: CRD guard + PTY stop via
+# pod-attach") to actually run before scale-down; until that lands this
+# entry is inert (Supported()==false with no RCON, same as every
+# protocol:none template) but is included here so it activates automatically
+# once the PTY-stop transport ships, with no further module change needed.
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/rust/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: rust
+  labels:
+    gameplane.local/module: rust
+spec:
+  displayName: Rust
+  game: rust
+  version: 1.0.0
+  accentColor: "#ce422b"
+  description: |
+    Rust dedicated server using
+    [didstopia/rust-server](https://github.com/Didstopia/rust-server).
+    Console attaches to container stdin (pty) — Rust's RCON is
+    WebSocket-only and unsupported here. Oxide plugins are supported via
+    the version picker.
+
+  image: didstopia/rust-server:latest
+
+  ports:
+    - name: game
+      containerPort: 28015
+      protocol: UDP
+      advertise: true
+    # Rust's RCON (28016) is WebSocket-over-TCP, not Source RCON — the
+    # agent can't dial it (see header comment). Declared here only so a
+    # player who wants to use their own WebRCON client can be routed to it
+    # via a networking.portOverrides / manual Service edit; Gameplane's own
+    # console/RCON features never use this port.
+    - name: rcon
+      containerPort: 28016
+      protocol: TCP
+      advertise: false
+
+  storage:
+    size: 10Gi
+    mountPath: /steamcmd/rust
+
+  resources:
+    requests: {cpu: "1", memory: 4Gi}
+    limits: {cpu: "4", memory: 8Gi}
+
+  rcon:
+    protocol: none
+
+  consoleMode: pty
+
+  capabilities:
+    # Runs over the pty-stdin transport once the operator's PTY-stop path
+    # lands (see header comment) — both commands are Facepunch/community-
+    # documented as the clean-shutdown sequence.
+    lifecycle:
+      stop: ["server.save", "quit"]
+    mods:
+      loaders:
+        oxide:
+          displayName: Oxide Plugins
+          path: oxide/plugins
+          extensions: [".cs"]
+      install:
+        allowedHosts:
+          - github.com
+          - .githubusercontent.com
+        maxSizeMB: 256
+
+  # Vanilla / Oxide each get their own mod volume (loader selects by id
+  # below). Vanilla intentionally has no matching capabilities.mods.loaders
+  # key, per the "absent/vanilla-style" rule — it correctly gets no Mods tab.
+  versions:
+    - id: vanilla
+      displayName: Vanilla
+      image: didstopia/rust-server:latest
+      loader: vanilla
+      default: true
+      env:
+        - { name: RUST_OXIDE_ENABLED, value: "0" }
+    - id: oxide
+      displayName: Oxide
+      image: didstopia/rust-server:latest
+      loader: oxide
+      env:
+        - { name: RUST_OXIDE_ENABLED, value: "1" }
+
+  configSchema:
+    - name: RUST_SERVER_NAME
+      displayName: Server Name
+      type: string
+      default: "Gameplane Rust Server"
+    - name: RUST_SERVER_MAXPLAYERS
+      displayName: Max Players
+      type: int
+      default: "50"
+    - name: RUST_SERVER_DESCRIPTION
+      displayName: Server Description
+      type: string
+      default: ""

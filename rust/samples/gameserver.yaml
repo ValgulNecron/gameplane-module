@@ -1,0 +1,29 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: rust-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: rust
+
+  # "vanilla" has no mods volume; "oxide"/"carbon" each get their own.
+  version: oxide
+
+  config:
+    RUST_SERVER_NAME: "Gameplane Rust Server"
+    RUST_SERVER_MAXPLAYERS: "50"
+    RUST_SERVER_DESCRIPTION: ""
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 32015
+
+  storage:
+    size: 10Gi
+
+  resources:
+    requests: { cpu: 1, memory: 4Gi }
+    limits:   { cpu: 4, memory: 8Gi }
