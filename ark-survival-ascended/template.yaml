@@ -58,7 +58,7 @@ metadata:
 spec:
   displayName: "ARK: Survival Ascended"
   game: ark-survival-ascended
-  version: 1.0.2
+  version: 1.0.3
   accentColor: "#00b2e2"
   description: |
     ARK: Survival Ascended dedicated server using
@@ -169,13 +169,13 @@ spec:
     # fires ~5 minutes in, kills the container mid-download, and the server
     # crash-loops forever — never once reaching a state where RCON listens.
     # A startup probe suspends liveness/readiness until it first succeeds,
-    # so the install gets up to an hour to finish; only then does the normal
+    # so the install gets up to FOUR HOURS to finish; only then does the normal
     # liveness window take over.
     startup:
       tcpSocket:
         port: rcon
       periodSeconds: 30
-      failureThreshold: 120
+      failureThreshold: 480
     readiness:
       tcpSocket:
         port: rcon
