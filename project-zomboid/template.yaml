@@ -34,7 +34,7 @@ metadata:
 spec:
   displayName: Project Zomboid
   game: project-zomboid
-  version: 1.0.1
+  version: 1.0.2
   accentColor: "#336600"
   description: |
     Project Zomboid dedicated server using
@@ -54,6 +54,13 @@ spec:
     fsGroup: 1000
 
   env:
+    # REQUIRED alongside spec.security.runAsUser. Setting runAsUser
+    # numerically does NOT give the container a HOME — that normally comes
+    # from the image's USER directive, which we override. SteamCMD then
+    # resolves "$HOME/Steam" to "//Steam" and dies as a non-root user:
+    #   Fatal Error: Couldn't create directory //Steam/package, got error 2
+    - name: HOME
+      value: /home/steam
     # Fixed to match rcon.port / the declared ports[] below — not exposed
     # in the wizard, since editing it independently would desync the
     # Service/agent connection from what the game actually binds.
