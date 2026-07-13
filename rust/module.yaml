@@ -1,7 +1,7 @@
 apiVersion: gameplane.local/module/v1
 name: rust
 displayName: Rust
-version: 1.0.0
+version: 1.0.1
 game: rust
 summary: Rust dedicated server (didstopia/rust-server) with a pty console, Oxide plugin volume, and a save-then-quit stop sequence.
 homepage: https://rust.facepunch.com/
