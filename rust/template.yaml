@@ -9,12 +9,9 @@
 # RustDedicated does accept an attached interactive console (every
 # Docker/tmux community wrapper drives it this way), which matches
 # consoleMode: pty. The clean-stop sequence ("server.save" then "quit") is
-# real and documented, but requires the operator's PTY-stdin stop path
-# (tracked separately — see Backlog task "Operator: CRD guard + PTY stop via
-# pod-attach") to actually run before scale-down; until that lands this
-# entry is inert (Supported()==false with no RCON, same as every
-# protocol:none template) but is included here so it activates automatically
-# once the PTY-stop transport ships, with no further module change needed.
+# real and documented, and now actually runs: the operator's PTY-stdin stop
+# transport writes it to the game container before scaling down, so a stop
+# or restart saves the world instead of taking a SIGTERM mid-write.
 #
 # Cluster-scoped; apply once per cluster:
 #     kubectl apply -f modules/rust/template.yaml
@@ -28,7 +25,7 @@ metadata:
 spec:
   displayName: Rust
   game: rust
-  version: 1.0.0
+  version: 1.0.1
   accentColor: "#ce422b"
   description: |
     Rust dedicated server using
@@ -81,9 +78,15 @@ spec:
           extensions: [".cs"]
       install:
         allowedHosts:
+          - umod.org
           - github.com
           - .githubusercontent.com
         maxSizeMB: 256
+      # uMod (Oxide) is Rust's plugin ecosystem — browse and install plugins
+      # in-app rather than hunting for a raw .cs URL. Keyless.
+      registry:
+        providers:
+          - provider: umod
 
   # Vanilla / Oxide each get their own mod volume (loader selects by id
   # below). Vanilla intentionally has no matching capabilities.mods.loaders
