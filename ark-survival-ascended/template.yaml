@@ -58,7 +58,7 @@ metadata:
 spec:
   displayName: "ARK: Survival Ascended"
   game: ark-survival-ascended
-  version: 1.0.1
+  version: 1.0.2
   accentColor: "#00b2e2"
   description: |
     ARK: Survival Ascended dedicated server using
@@ -162,16 +162,28 @@ spec:
   probes:
     # Game/peer ports are UDP; RCON is the only TCP port, so it's the
     # probe target (same pattern as factorio).
+    #
+    # The startup probe is LOAD-BEARING, not a nicety. First boot downloads
+    # ~13 GB of game via SteamCMD (plus Proton), which takes far longer than
+    # any sane liveness window. Without a startup probe the liveness probe
+    # fires ~5 minutes in, kills the container mid-download, and the server
+    # crash-loops forever — never once reaching a state where RCON listens.
+    # A startup probe suspends liveness/readiness until it first succeeds,
+    # so the install gets up to an hour to finish; only then does the normal
+    # liveness window take over.
+    startup:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 30
+      failureThreshold: 120
     readiness:
       tcpSocket:
         port: rcon
-      initialDelaySeconds: 60
       periodSeconds: 15
       failureThreshold: 20
     liveness:
       tcpSocket:
         port: rcon
-      initialDelaySeconds: 180
       periodSeconds: 30
       failureThreshold: 5
 
