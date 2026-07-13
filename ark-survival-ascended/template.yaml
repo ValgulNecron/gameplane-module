@@ -58,16 +58,22 @@ metadata:
 spec:
   displayName: "ARK: Survival Ascended"
   game: ark-survival-ascended
-  version: 1.0.0
+  version: 1.0.1
   accentColor: "#00b2e2"
   description: |
     ARK: Survival Ascended dedicated server using
     [mschnitzer/asa-linux-server](https://github.com/mschnitzer/ark-survival-ascended-linux-container-image).
-    RCON-backed console and moderation. Mods install via the game's own
-    `-mods=` CurseForge launch parameter, not a panel-managed folder — see
-    the ASA_START_PARAMS field below.
+    RCON-backed console and moderation. CurseForge mod management via the
+    Mods tab.
 
   image: mschnitzer/asa-linux-server:latest
+
+  # REQUIRED. The image declares no ENTRYPOINT and its CMD is /bin/bash, so
+  # without this the container gets a non-interactive bash, which reads EOF
+  # on stdin and exits 0 immediately — the pod then restart-loops forever
+  # with an empty log and a "Completed" exit. The image's own compose file
+  # sets `entrypoint: /usr/bin/start_server`; this is that.
+  command: ["/usr/bin/start_server"]
 
   env:
     - name: ENABLE_DEBUG
@@ -134,6 +140,24 @@ spec:
         displayName: Save world
         icon: save
         command: "SaveWorld"
+    mods:
+      # ASA has no mods directory and no mods env — its only hook is a
+      # -mods=<curseforge-id>,... flag on the launch string, which also
+      # carries the user's own params. So the operator APPENDS the selected
+      # ids onto ASA_START_PARAMS; the user never types -mods= themselves,
+      # and with no mods selected nothing is appended (a bare -mods= would
+      # break the server).
+      idList:
+        env: ASA_START_PARAMS
+        format: " -mods={{ids}}"
+        separator: ","
+        mode: append
+      # ASA mods are distributed through CurseForge. The game downloads them
+      # itself at boot, so there is deliberately no install/allowedHosts
+      # block — the agent never fetches anything for this game.
+      registry:
+        providers:
+          - provider: curseforge
 
   probes:
     # Game/peer ports are UDP; RCON is the only TCP port, so it's the
@@ -166,12 +190,12 @@ spec:
         Raw ASA launch string: map + ?query=params, then space-separated
         -Flag=value CLI args, e.g. player count is " -WinLiveMaxPlayers=70"
         (a separate arg, not a ?query fragment — matches the image's own
-        documented example). Append " -mods=<curseforge-id>,<curseforge-id>"
-        to install CurseForge mods (the server downloads them itself at
-        boot). Do NOT put ServerAdminPassword here — the image's own docs
-        warn against setting it on the command line. Set it via the
-        Admin / RCON password field below instead, and see README.md for
-        the one-time step needed to make ASA actually accept it.
+        documented example). CurseForge mods are managed via the Mods tab
+        and automatically appended to this string. Do NOT put
+        ServerAdminPassword here — the image's own docs warn against
+        setting it on the command line. Set it via the Admin / RCON
+        password field below instead, and see README.md for the one-time
+        step needed to make ASA actually accept it.
       type: string
       required: true
       default: "TheIsland_WP?listen?Port=7777?RCONPort=27020?RCONEnabled=True -WinLiveMaxPlayers=70"

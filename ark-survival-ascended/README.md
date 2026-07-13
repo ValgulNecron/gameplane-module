@@ -74,13 +74,12 @@ via the Files tab.
 
 ## Mods
 
-CurseForge mods install via the game's own `-mods=<id>,<id>` launch
-parameter — the server downloads them itself at boot. Append it to
-**Launch parameters** (e.g. `...-WinLiveMaxPlayers=70 -mods=931636,889745`).
-There is no panel-managed mods folder for this game (no
-`capabilities.mods` block): the manual-unzip `.../Mods/<id>` layout only
-applies to the singleplayer/manual flow, not the dedicated-server flow
-this image runs.
+CurseForge mods are managed via the **Mods** tab in the dashboard. Select
+mods to install them — the game downloads them itself at boot via the
+`-mods=<id>,<id>` launch parameter, which is automatically appended to
+your **Launch parameters** string. The manual-unzip `.../Mods/<id>` layout
+only applies to the singleplayer/manual flow, not the dedicated-server
+flow this image runs.
 
 ## Ports
 
