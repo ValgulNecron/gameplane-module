@@ -68,6 +68,13 @@ spec:
 
   image: mschnitzer/asa-linux-server:latest
 
+  # REQUIRED. The image declares no ENTRYPOINT and its CMD is /bin/bash, so
+  # without this the container gets a non-interactive bash, which reads EOF
+  # on stdin and exits 0 immediately — the pod then restart-loops forever
+  # with an empty log and a "Completed" exit. The image's own compose file
+  # sets `entrypoint: /usr/bin/start_server`; this is that.
+  command: ["/usr/bin/start_server"]
+
   env:
     - name: ENABLE_DEBUG
       value: "0"
