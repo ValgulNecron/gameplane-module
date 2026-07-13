@@ -34,7 +34,7 @@ metadata:
 spec:
   displayName: Project Zomboid
   game: project-zomboid
-  version: 1.0.0
+  version: 1.0.1
   accentColor: "#336600"
   description: |
     Project Zomboid dedicated server using
@@ -43,6 +43,15 @@ spec:
     ID lists Project Zomboid itself uses to sync content.
 
   image: sknnr/zomboid-dedicated-server:latest
+
+  # REQUIRED. The image is rootless and runs as UID/GID 1000. Its own README:
+  # "should not be run as the root user. Attempting to do so will prevent the
+  # server from starting." fsGroup makes the kubelet chown the PVC so the
+  # non-root user can write its saves.
+  security:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
 
   env:
     # Fixed to match rcon.port / the declared ports[] below — not exposed
@@ -76,7 +85,7 @@ spec:
   # save/config tree (.../zomboid_data) under one PVC.
   storage:
     size: 15Gi
-    mountPath: /home/steam
+    mountPath: /home/steam/Zomboid
 
   resources:
     requests:
