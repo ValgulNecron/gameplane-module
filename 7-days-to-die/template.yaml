@@ -43,7 +43,7 @@ metadata:
 spec:
   displayName: 7 Days to Die
   game: 7-days-to-die
-  version: 2.0.0
+  version: 2.0.1
   accentColor: "#8b0000"
   description: |
     7 Days to Die dedicated server using
@@ -90,7 +90,7 @@ spec:
       advertise: false
 
   storage:
-    size: 15Gi
+    size: 45Gi
     mountPath: /home/sdtdserver/.local/share/7DaysToDie
 
   resources:
