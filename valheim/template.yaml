@@ -21,7 +21,7 @@ metadata:
 spec:
   displayName: Valheim (Dedicated)
   game: valheim
-  version: 2.3.0
+  version: 2.3.1
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#d99a2b"
   description: |
@@ -100,7 +100,7 @@ spec:
   probes:
     readiness:
       httpGet:
-        path: /status
+        path: /status.json
         port: status
       initialDelaySeconds: 60
       periodSeconds: 15
