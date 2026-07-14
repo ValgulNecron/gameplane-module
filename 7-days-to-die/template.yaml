@@ -43,7 +43,7 @@ metadata:
 spec:
   displayName: 7 Days to Die
   game: 7-days-to-die
-  version: 2.0.1
+  version: 2.0.2
   accentColor: "#8b0000"
   description: |
     7 Days to Die dedicated server using
@@ -90,8 +90,24 @@ spec:
       advertise: false
 
   storage:
-    size: 45Gi
+    # The worlds. 7DtD's persistent state lives in TWO directories with no
+    # safe common parent: the ~17.5GB game install (serverfiles/) and the
+    # world saves (.local/share/7DaysToDie). Their only shared parent,
+    # /home/sdtdserver, also holds user.sh — the ENTRYPOINT — so mounting a
+    # PVC there shadows it and the container cannot even exec.
+    #
+    # Before spec.storage.extra existed, the single PVC had to go on the
+    # saves, which left the 17.5GB install on the node's ephemeral disk.
+    # SteamCMD then died with "Not enough disk space to download server
+    # files" and the server crash-looped, never once starting.
     mountPath: /home/sdtdserver/.local/share/7DaysToDie
+    size: 10Gi
+    extra:
+      # The game install. Persisted so it is downloaded once, not on every
+      # pod start — and so it is not on ephemeral node disk at all.
+      - name: serverfiles
+        mountPath: /home/sdtdserver/serverfiles
+        size: 45Gi
 
   resources:
     requests:
