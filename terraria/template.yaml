@@ -20,7 +20,8 @@ spec:
   displayName: Terraria
   game: terraria
   # Kept in lockstep with module.yaml's bundle version from 2.1.0 onward.
-  version: 2.1.0
+  version: 2.1.1
+  categories: [Sandbox, Survival, Adventure, Modded]
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#4a90d9"
   description: |

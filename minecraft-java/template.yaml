@@ -22,7 +22,8 @@ spec:
   displayName: Minecraft (Java Edition)
   game: minecraft-java
   # Kept in lockstep with module.yaml's bundle version from 2.5.0 onward.
-  version: 2.7.1
+  version: 2.7.2
+  categories: [Sandbox, Survival, Building, Modded, Creative]
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#5b9a3e"
   description: |

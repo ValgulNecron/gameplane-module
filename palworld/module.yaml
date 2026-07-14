@@ -1,8 +1,9 @@
 apiVersion: gameplane.local/module/v1
 name: palworld
 displayName: Palworld (Dedicated)
-version: 1.1.1
+version: 1.1.2
 game: palworld
+categories: [Survival, Sandbox, Co-op]
 summary: Palworld dedicated server (thijsvanloef/palworld-server-docker) with RCON console, save-aware graceful stop, and a .pak mod volume with archive install. First boot downloads the server via steamcmd.
 homepage: https://www.pocketpair.jp/palworld
 license: MIT

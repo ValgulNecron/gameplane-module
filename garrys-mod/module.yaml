@@ -1,8 +1,9 @@
 apiVersion: gameplane.local/module/v1
 name: garrys-mod
 displayName: Garry's Mod
-version: 2.0.0
+version: 2.0.1
 game: garrys-mod
+categories: [Sandbox, Modded, Creative]
 summary: Garry's Mod dedicated server (ceifa/garrysmod) with Workshop addon collections via launch args. No RCON console or panel-managed addons — this image bakes them in.
 homepage: https://gmod.facepunch.com/
 license: MIT

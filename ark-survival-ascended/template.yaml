@@ -58,7 +58,8 @@ metadata:
 spec:
   displayName: "ARK: Survival Ascended"
   game: ark-survival-ascended
-  version: 1.0.5
+  version: 1.0.6
+  categories: [Survival, PvP, Co-op, Modded]
   accentColor: "#00b2e2"
   description: |
     ARK: Survival Ascended dedicated server using

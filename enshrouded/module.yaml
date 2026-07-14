@@ -1,8 +1,9 @@
 apiVersion: gameplane.local/module/v1
 name: enshrouded
 displayName: Enshrouded
-version: 1.0.0
+version: 1.0.1
 game: enshrouded
+categories: [Survival, Co-op, Building, Adventure]
 summary: Enshrouded dedicated server.
 homepage: https://enshrouded.com/
 license: MIT

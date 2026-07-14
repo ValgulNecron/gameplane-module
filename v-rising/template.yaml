@@ -27,7 +27,8 @@ metadata:
 spec:
   displayName: V Rising
   game: v-rising
-  version: 1.0.0
+  version: 1.0.1
+  categories: [Survival, PvP, Co-op]
   accentColor: "#8b0000"
   description: |
     V Rising dedicated server using

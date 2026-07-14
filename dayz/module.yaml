@@ -1,0 +1,10 @@
+apiVersion: gameplane.local/module/v1
+name: dayz
+displayName: DayZ
+version: 1.0.1
+game: dayz
+categories: [Survival, Shooter, PvP, Horror]
+summary: DayZ dedicated server (GodBleak/ServerZ). No RCON is reachable (proprietary BattlEye RCon, not Source RCON) — manage via SIGTERM-safe restarts and config fields.
+homepage: https://dayz.com/
+license: MIT
+gameplaneMinVersion: 0.2.0

@@ -1,0 +1,102 @@
+# Gameplane GameTemplate for DayZ (dedicated server).
+#
+# Backed by GodBleak/ServerZ (https://github.com/GodBleak/ServerZ), pulled
+# from the project's own self-hosted OCI registry (registry.godbleak.dev —
+# verified reachable and anonymously pullable; there is no Docker
+# Hub/GHCR mirror). The previous draft's image (jammsen/dayz-dedicated-
+# server) does not exist on any registry at all — this replaces it.
+#
+# DayZ speaks BattlEye RCon, a proprietary protocol distinct from both
+# Source RCON and telnet — the agent has no client for it, so
+# rcon.protocol is "none". The game binary itself has no interactive
+# admin console either (admin is BattlEye RCon or an external tool only),
+# so consoleMode is also left unset ("no live console" in the UI) rather
+# than "pty", which would attach to a process that reads no meaningful
+# input. With no RCON and no working console, there is no capabilities
+# block, no lifecycle.stop, and no capabilities.mods — see README for why.
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/dayz/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: dayz
+  labels:
+    gameplane.local/module: dayz
+spec:
+  displayName: DayZ
+  game: dayz
+  version: 1.0.1
+  categories: [Survival, Shooter, PvP, Horror]
+  accentColor: "#bd2020"
+  description: |
+    DayZ dedicated server using
+    [GodBleak/ServerZ](https://github.com/GodBleak/ServerZ). No RCON is
+    reachable (DayZ uses proprietary BattlEye RCon, not Source RCON) —
+    manage the server via SIGTERM-safe restarts and the config fields
+    below.
+
+  image: registry.godbleak.dev/godbleak/serverz:latest
+
+  env:
+    # Fixed to match the declared ports[] below.
+    - name: PORT
+      value: "2302"
+    - name: STEAM_QUERY_PORT
+      value: "27015"
+
+  ports:
+    - name: game
+      containerPort: 2302
+      protocol: UDP
+      advertise: true
+    - name: query
+      containerPort: 27015
+      protocol: UDP
+      advertise: false
+
+  # ServerZ documents four separate paths (/data, /overrides, /install,
+  # /root/.steam) with no common parent besides /. Only /data (world/
+  # profile state) is mounted — /install is left ephemeral, so every pod
+  # (re)start re-downloads the ~10GB+ server via SteamCMD, the same
+  # tradeoff the shipped valheim module already makes with lloesche's
+  # image. See README for the mods/Steam-auth implication of this.
+  storage:
+    size: 40Gi
+    mountPath: /data
+
+  resources:
+    requests:
+      cpu: "2"
+      memory: 6Gi
+    limits:
+      cpu: "4"
+      memory: 12Gi
+
+  rcon:
+    protocol: none
+
+  # No console/probes block: the game's only ports are UDP (no TCP surface
+  # to probe), and there is no HTTP endpoint either. Kubernetes falls back
+  # to "ready once the container is running" — accepted tradeoff, same
+  # class of gap noted for Enshrouded in the module research pass.
+
+  configSchema:
+    - name: TEMPLATE
+      displayName: Mission template
+      description: e.g. "dayzOffline.chernarusplus" for the default map.
+      type: string
+      default: "dayzOffline.chernarusplus"
+    - name: MOTD
+      displayName: MOTD
+      type: string
+      default: ""
+    - name: MOD_LIST
+      displayName: Workshop mod IDs
+      description: >-
+        Comma-separated Steam Workshop item IDs. Requires a one-time
+        interactive Steam login first — see README; leave blank to run
+        vanilla with no Steam account needed at all.
+      type: string
+      default: ""

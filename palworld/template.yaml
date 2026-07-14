@@ -28,7 +28,8 @@ spec:
   displayName: Palworld (Dedicated)
   game: palworld
   # Kept in lockstep with module.yaml's bundle version.
-  version: 1.1.1
+  version: 1.1.2
+  categories: [Survival, Sandbox, Co-op]
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#3d9dd9"
   description: |

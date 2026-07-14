@@ -25,7 +25,8 @@ metadata:
 spec:
   displayName: Rust
   game: rust
-  version: 1.0.1
+  version: 1.0.2
+  categories: [Survival, Shooter, PvP]
   accentColor: "#ce422b"
   description: |
     Rust dedicated server using

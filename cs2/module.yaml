@@ -1,8 +1,9 @@
 apiVersion: gameplane.local/module/v1
 name: cs2
 displayName: Counter-Strike 2
-version: 1.0.2
+version: 1.0.3
 game: cs2
+categories: [Shooter, PvP]
 summary: Counter-Strike 2 dedicated server (joedwards32/CS2) with Source RCON and a Metamod/CS# plugins volume.
 homepage: https://www.counter-strike.net/cs2
 license: MIT

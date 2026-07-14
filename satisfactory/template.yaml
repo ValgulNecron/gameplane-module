@@ -27,7 +27,8 @@ spec:
   displayName: Satisfactory (Dedicated)
   game: satisfactory
   # Kept in lockstep with module.yaml's bundle version.
-  version: 1.0.0
+  version: 1.0.1
+  categories: [Simulation, Building, Sandbox, Co-op]
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#e59344"
   description: |

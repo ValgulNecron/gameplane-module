@@ -22,7 +22,8 @@ metadata:
 spec:
   displayName: Counter-Strike 2
   game: cs2
-  version: 1.0.2
+  version: 1.0.3
+  categories: [Shooter, PvP]
   accentColor: "#f4a900"
   description: |
     Counter-Strike 2 dedicated server using
