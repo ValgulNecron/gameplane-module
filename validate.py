@@ -723,6 +723,70 @@ def rule_puid_image_needs_fsgroup(spec: dict, cfg: dict, image_ref: str) -> list
     return findings
 
 
+def rule_credential_fields_must_be_password(spec: dict) -> list[Finding]:
+    """Rule 9: credential-shaped config fields must have type: password.
+
+    Config fields whose names look like credentials (PASSWORD, TOKEN, SECRET,
+    etc.) are stored in plaintext in the GameServer CR and etcd if type is not
+    'password'. Only 'type: password' stores values in a per-GameServer Secret
+    and injects them via SecretKeyRef — the value never lands inline in the CR,
+    pod spec, or etcd.
+
+    Historical bug (caught in cs2): SRCDS_TOKEN (a Steam Game Server Login Token)
+    was declared as 'type: string', so it would have been stored in plaintext in
+    the CR and visible to anyone with kubectl read access.
+
+    ERROR: name looks credential-shaped but type is not 'password'.
+    Skip: type is 'bool' or 'int' (a boolean flag named 'PASSWORD_ENABLED' is not
+    a credential even if the name matches).
+    """
+    config_schema = spec.get("configSchema") or []
+    findings: list[Finding] = []
+
+    # Credential name patterns to match (case-insensitive)
+    credential_substrings = {
+        "PASSWORD",
+        "PASSWD",
+        "PASS",
+        "TOKEN",
+        "SECRET",
+        "APIKEY",
+        "API_KEY",
+        "AUTHKEY",
+        "GSLT",
+        "CREDENTIAL",
+    }
+
+    for entry in config_schema:
+        if not isinstance(entry, dict):
+            continue
+
+        name = entry.get("name", "")
+        field_type = entry.get("type", "")
+
+        # Skip non-credential types (bool/int are never credentials)
+        if field_type in ("bool", "int"):
+            continue
+
+        # Check if name contains any credential substring (case-insensitive)
+        name_upper = name.upper()
+        if any(substring in name_upper for substring in credential_substrings):
+            if field_type != "password":
+                findings.append(
+                    Finding(
+                        ERROR,
+                        "credential-field-must-be-password",
+                        f"config field {name!r} looks credential-shaped but "
+                        f"type={field_type!r} (not 'password') — the value will be "
+                        "stored in plaintext in the GameServer CR, etcd, and visible "
+                        "in 'kubectl get gameserver -o yaml'. Set type: password so "
+                        "the operator stores this in a per-GameServer Secret instead.",
+                    )
+                )
+
+    return findings
+
+
 # --------------------------------------------------------------------------
 # Orchestration
 # --------------------------------------------------------------------------
@@ -768,6 +832,7 @@ def validate_module(spec: dict, cache: dict[str, dict]) -> list[Finding]:
 
     findings += rule_rcon_protocol(spec)
     findings += rule_mods_loaders_requires_versions(spec)
+    findings += rule_credential_fields_must_be_password(spec)
     return findings
 
 
