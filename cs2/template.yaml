@@ -22,7 +22,7 @@ metadata:
 spec:
   displayName: Counter-Strike 2
   game: cs2
-  version: 1.0.1
+  version: 1.0.2
   accentColor: "#f4a900"
   description: |
     Counter-Strike 2 dedicated server using
@@ -121,7 +121,10 @@ spec:
     - name: SRCDS_TOKEN
       displayName: GSLT (Steam Login Token)
       description: Game Server Login Token from https://steamcommunity.com/dev/managegameservers.
-      type: string
+      # A Steam Game Server Login Token is a CREDENTIAL. type: password stores
+      # it in a per-GameServer Secret and injects it via SecretKeyRef — it never
+      # lands inline in the GameServer CR or the pod spec.
+      type: password
       required: true
       default: ""
     - name: CS2_HOST_WORKSHOP_COLLECTION
