@@ -1,0 +1,40 @@
+name: validate modules
+
+# Preflight-checks every modules/<name>/template.yaml against the ACTUAL
+# OCI image config of the image(s) it declares, catching the bug classes
+# that have shipped broken before (see validate.py's module docstring for
+# the full rule list and the historical bugs each one repros). Runs on
+# every PR and on pushes to main so a template change is checked before it
+# ever reaches a real cluster.
+#
+# Network access to Docker Hub is required (the validator resolves each
+# declared image's manifest + config blob anonymously). A registry that
+# can't be reached is reported as a WARN by the script itself, not a hard
+# failure — so a real transient network blip degrades to "couldn't
+# verify", not a red build. Only a confirmed problem (missing image,
+# missing spec.command, missing security.runAsUser, a mount that shadows
+# the image's own launcher, ...) fails the job.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: pip install --disable-pip-version-check --user pyyaml
+
+      - name: Run module preflight validator
+        run: python3 validate.py
