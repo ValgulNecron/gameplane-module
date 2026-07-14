@@ -58,7 +58,7 @@ metadata:
 spec:
   displayName: "ARK: Survival Ascended"
   game: ark-survival-ascended
-  version: 1.0.4
+  version: 1.0.5
   accentColor: "#00b2e2"
   description: |
     ARK: Survival Ascended dedicated server using
@@ -172,33 +172,24 @@ spec:
         providers:
           - provider: curseforge
 
-  probes:
-    # Game/peer ports are UDP; RCON is the only TCP port, so it's the
-    # probe target (same pattern as factorio).
-    #
-    # The startup probe is LOAD-BEARING, not a nicety. First boot downloads
-    # ~13 GB of game via SteamCMD (plus Proton), which takes far longer than
-    # any sane liveness window. Without a startup probe the liveness probe
-    # fires ~5 minutes in, kills the container mid-download, and the server
-    # crash-loops forever — never once reaching a state where RCON listens.
-    # A startup probe suspends liveness/readiness until it first succeeds,
-    # so the install gets up to FOUR HOURS to finish; only then does the normal
-    # liveness window take over.
-    startup:
-      tcpSocket:
-        port: rcon
-      periodSeconds: 30
-      failureThreshold: 480
-    readiness:
-      tcpSocket:
-        port: rcon
-      periodSeconds: 15
-      failureThreshold: 20
-    liveness:
-      tcpSocket:
-        port: rcon
-      periodSeconds: 30
-      failureThreshold: 5
+  # NO PROBES — deliberately. ASA exposes no probeable TCP port:
+  #   - game/peer are UDP, which the kubelet cannot probe
+  #   - RCON is NOT enabled by ?RCONEnabled=True / ?RCONPort= on the launch
+  #     string. ASA only honours those from GameUserSettings.ini, which this
+  #     template deliberately does not render (ASA rewrites that file, so a
+  #     re-render every start would wipe the admin's in-game settings).
+  #
+  # So an RCON probe can NEVER succeed, and it killed a perfectly healthy
+  # server. The game's own log:
+  #     Server: "ARK #391248" has successfully started!
+  #     Full Startup: 50.89 seconds
+  #     Server has completed startup and is now advertising for join.
+  # ...while the startup probe failed 1651 times over 13h and SIGTERMed it.
+  # The server boots in under a minute; the probe was the entire problem.
+  #
+  # Once the admin enables RCON via the one-time GameUserSettings.ini edit
+  # (see README), the Console/RCON features light up — but the pod must not
+  # depend on that to be considered healthy.
 
   # rcon-password.txt is a Gameplane-owned file ASA never reads or writes,
   # so re-rendering it on every restart is safe — unlike
