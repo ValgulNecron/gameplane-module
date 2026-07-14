@@ -6,14 +6,21 @@
 # Hub/GHCR mirror). The previous draft's image (jammsen/dayz-dedicated-
 # server) does not exist on any registry at all — this replaces it.
 #
-# DayZ speaks BattlEye RCon, a proprietary protocol distinct from both
-# Source RCON and telnet — the agent has no client for it, so
-# rcon.protocol is "none". The game binary itself has no interactive
-# admin console either (admin is BattlEye RCon or an external tool only),
-# so consoleMode is also left unset ("no live console" in the UI) rather
-# than "pty", which would attach to a process that reads no meaningful
-# input. With no RCON and no working console, there is no capabilities
-# block, no lifecycle.stop, and no capabilities.mods — see README for why.
+# DayZ speaks BattlEye RCon, a proprietary UDP protocol distinct from both
+# Source RCON and telnet. The agent now implements it
+# (rcon.protocol: battleye), so the console, players list and moderation
+# work. The game binary has no interactive stdin console at all — admin is
+# BattlEye RCon or nothing — so consoleMode is "rcon", not "pty".
+#
+# ServerZ only writes a beserver_x64.cfg at all if one of BE_IP/BE_PORT/
+# BE_PASSWORD is set, so all three are set below: the operator injects the
+# generated password into BE_PASSWORD, and BE_IP pins the listener to
+# loopback, which is where the agent sidecar dials it from inside the pod.
+#
+# No lifecycle.stop: BattlEye RCon has a "#shutdown" command, but DayZ's
+# is unreliable across builds and the server persists continuously rather
+# than on a save command, so a SIGTERM is not the data-loss risk it is for
+# Minecraft or Valheim. Left out rather than shipping a stop that lies.
 #
 # Cluster-scoped; apply once per cluster:
 #     kubectl apply -f modules/dayz/template.yaml
@@ -45,6 +52,15 @@ spec:
       value: "2302"
     - name: STEAM_QUERY_PORT
       value: "27015"
+    # ServerZ generates beserver_x64.cfg only when one of BE_* is set.
+    # BE_PASSWORD is injected by the operator (see rcon.passwordEnv).
+    - name: BE_PORT
+      value: "2305"
+    # Bind RCon to loopback: the agent sidecar shares the pod's network
+    # namespace, so it reaches 127.0.0.1:2305 — and an RCon port that is
+    # not on a public interface cannot be brute-forced from the internet.
+    - name: BE_IP
+      value: "127.0.0.1"
 
   ports:
     - name: game
@@ -75,7 +91,25 @@ spec:
       memory: 12Gi
 
   rcon:
-    protocol: none
+    protocol: battleye
+    port: 2305
+    # ServerZ writes this into beserver_x64.cfg as RConPassword.
+    passwordEnv: BE_PASSWORD
+
+  consoleMode: rcon
+
+  capabilities:
+    players:
+      # BattlEye's "players" reply is a table:
+      #   [#] [IP Address]:[Port] [Ping] [GUID] [Name]
+      #   0   10.0.0.5:2304   32   abc123…(OK)  Survivor
+      # followed by a "(N players in total)" footer, which this regex skips.
+      list:
+        command: "players"
+        entryRegex: '^\s*\d+\s+\S+:\d+\s+\d+\s+\S+\s+(?P<name>.+?)\s*$'
+      # BattlEye moderation is by player number, not name — the dashboard
+      # passes what the list returned, so kick/ban are left unset rather
+      # than shipping commands that would silently target the wrong player.
 
   # No console/probes block: the game's only ports are UDP (no TCP surface
   # to probe), and there is no HTTP endpoint either. Kubernetes falls back
