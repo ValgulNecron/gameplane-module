@@ -21,7 +21,8 @@ metadata:
 spec:
   displayName: Valheim (Dedicated)
   game: valheim
-  version: 2.3.1
+  version: 2.3.2
+  categories: [Survival, Co-op, Building]
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#d99a2b"
   description: |

@@ -7,7 +7,8 @@ metadata:
 spec:
   displayName: Don't Starve Together
   game: dont-starve-together
-  version: 1.0.0
+  version: 1.0.1
+  categories: [Survival, Co-op]
   accentColor: "#cc0000"
   description: DST dedicated server.
   image: jamesits/dst-server:latest

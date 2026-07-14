@@ -7,7 +7,8 @@ metadata:
 spec:
   displayName: Enshrouded
   game: enshrouded
-  version: 1.0.0
+  version: 1.0.1
+  categories: [Survival, Co-op, Building, Adventure]
   accentColor: "#2a4b7c"
   description: Enshrouded dedicated server.
   image: mornedhels/enshrouded-server:latest

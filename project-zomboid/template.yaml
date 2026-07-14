@@ -34,7 +34,8 @@ metadata:
 spec:
   displayName: Project Zomboid
   game: project-zomboid
-  version: 1.0.3
+  version: 1.0.4
+  categories: [Survival, Horror, Co-op]
   accentColor: "#336600"
   description: |
     Project Zomboid dedicated server using

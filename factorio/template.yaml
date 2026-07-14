@@ -28,7 +28,8 @@ spec:
   displayName: Factorio (Headless)
   game: factorio
   # Kept in lockstep with module.yaml's bundle version.
-  version: 1.1.0
+  version: 1.1.1
+  categories: [Simulation, Building, Sandbox, Modded, Co-op]
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#e39827"
   description: |

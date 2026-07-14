@@ -43,7 +43,8 @@ metadata:
 spec:
   displayName: 7 Days to Die
   game: 7-days-to-die
-  version: 2.0.2
+  version: 2.0.3
+  categories: [Survival, Horror, Co-op, Shooter]
   accentColor: "#8b0000"
   description: |
     7 Days to Die dedicated server using

@@ -1,8 +1,9 @@
 apiVersion: gameplane.local/module/v1
 name: 7-days-to-die
 displayName: 7 Days to Die
-version: 2.0.2
+version: 2.0.3
 game: 7-days-to-die
+categories: [Survival, Horror, Co-op, Shooter]
 summary: 7 Days to Die dedicated server (vinanrra/7dtd-server) with persistent world saves and image-native mod installers. No RCON console or wizard server settings — this image spreads them across directories the operator can't all mount at once.
 homepage: https://7daystodie.com/
 license: MIT

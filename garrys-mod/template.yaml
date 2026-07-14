@@ -79,7 +79,8 @@ metadata:
 spec:
   displayName: Garry's Mod
   game: garrys-mod
-  version: 2.0.0
+  version: 2.0.1
+  categories: [Sandbox, Modded, Creative]
   accentColor: "#1194f0"
   description: |
     Garry's Mod dedicated server using

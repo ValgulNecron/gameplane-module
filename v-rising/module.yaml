@@ -1,8 +1,9 @@
 apiVersion: gameplane.local/module/v1
 name: v-rising
 displayName: V Rising
-version: 1.0.0
+version: 1.0.1
 game: v-rising
+categories: [Survival, PvP, Co-op]
 summary: V Rising dedicated server (trueosiris/vrising) with Source RCON and a safe shutdown sequence.
 homepage: https://playvrising.com/
 license: MIT
