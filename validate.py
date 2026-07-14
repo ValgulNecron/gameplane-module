@@ -660,6 +660,69 @@ def rule_mods_loaders_requires_versions(spec: dict) -> list[Finding]:
     return []
 
 
+def rule_puid_image_needs_fsgroup(spec: dict, cfg: dict, image_ref: str) -> list[Finding]:
+    """Rule 8: images with PUID/PGID privilege drop need fsGroup.
+
+    Historical bug: thijsvanloef/palworld-server-docker has User: "" (starts as root)
+    but Env declares PUID=1000/PGID=1000, dropping privileges at runtime. Without
+    spec.security.fsGroup, the data PVC is root-owned and the dropped-privilege
+    user can't write — leading to "PalServer.sh is not executable" and restart loops.
+
+    ERROR: image declares PUID/PGID in Env but template has no fsGroup.
+    WARN: template sets runAsUser on a PUID-style image (image needs to start as
+    root in order to drop privileges).
+    """
+    env_list = cfg.get("Env") or []
+    has_puid = any(e.split("=", 1)[0] == "PUID" for e in env_list)
+    has_pgid = any(e.split("=", 1)[0] == "PGID" for e in env_list)
+
+    if not (has_puid or has_pgid):
+        return []
+
+    findings: list[Finding] = []
+
+    # Check if fsGroup is set
+    fs_group = get_path(spec, "security.fsGroup")
+    if fs_group is None:
+        findings.append(
+            Finding(
+                # WARN, not ERROR. A PUID/PGID image is a *risk* signal, not proof of
+                # breakage: many such images chown the volume themselves while still
+                # root, before dropping. factorio, rust and terraria all do this and
+                # run fine with no fsGroup. But palworld does NOT — once dropped it
+                # could not chmod +x the files SteamCMD had just installed
+                # ("./PalServer.sh is not executable."), exited 0, and restart-looped
+                # 92 times. So: flag it for a human, don't fail the build.
+                WARN,
+                "puid-image-needs-fsgroup",
+                f"image {image_ref!r} declares PUID/PGID in Env (its entrypoint drops "
+                "privileges at runtime) but spec.security.fsGroup is unset. If the image "
+                "does not chown the data volume before dropping, the dropped user cannot "
+                "write its own install — palworld hit exactly this ('./PalServer.sh is not "
+                "executable.', exit 0, 92 restarts). Verify, and set spec.security.fsGroup "
+                "to the PUID if needed. Do NOT set runAsUser: the image must start as root "
+                "in order to drop.",
+            )
+        )
+
+    # Warn if template incorrectly sets runAsUser on a PUID image
+    run_as_user = get_path(spec, "security.runAsUser")
+    if run_as_user is not None:
+        findings.append(
+            Finding(
+                WARN,
+                "puid-image-with-runasuser",
+                f"image {image_ref!r} declares PUID/PGID (needs to start as root "
+                "to drop privileges), but spec.security.runAsUser={run_as_user} — "
+                "this forces the container to start as non-root, preventing the "
+                "privilege-drop mechanism from working. Remove spec.security.runAsUser "
+                "and rely on fsGroup for permissions.",
+            )
+        )
+
+    return findings
+
+
 # --------------------------------------------------------------------------
 # Orchestration
 # --------------------------------------------------------------------------
@@ -701,6 +764,7 @@ def validate_module(spec: dict, cache: dict[str, dict]) -> list[Finding]:
         findings += rule_nonroot_requires_runasuser(spec, cfg, ref)
         findings += rule_runasuser_requires_home(spec, cfg, ref)
         findings += rule_mount_shadowing(spec, cfg, ref)
+        findings += rule_puid_image_needs_fsgroup(spec, cfg, ref)
 
     findings += rule_rcon_protocol(spec)
     findings += rule_mods_loaders_requires_versions(spec)
