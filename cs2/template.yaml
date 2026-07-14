@@ -22,7 +22,7 @@ metadata:
 spec:
   displayName: Counter-Strike 2
   game: cs2
-  version: 1.0.0
+  version: 1.0.1
   accentColor: "#f4a900"
   description: |
     Counter-Strike 2 dedicated server using
@@ -31,6 +31,21 @@ spec:
     CounterStrikeSharp plugins install under `game/csgo/addons`.
 
   image: joedwards32/cs2:latest
+
+  # REQUIRED. The image config declares User "1000:1000" — it starts as a
+  # non-root user with no root step to self-chown, so a fresh PVC is EACCES
+  # without fsGroup. And overriding runAsUser drops $HOME (it normally comes
+  # from the image's USER directive), which SteamCMD needs — it resolves
+  # "$HOME/Steam" to "//Steam" and dies. Both are required together; fixing
+  # only one just moves the failure. Caught by validate.py before first boot.
+  env:
+    - name: HOME
+      value: /home/steam
+
+  security:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
 
   ports:
     - name: game
