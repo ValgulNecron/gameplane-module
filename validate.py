@@ -120,6 +120,13 @@ MANIFEST_ACCEPT = ", ".join(
 
 CURL_TIMEOUT_SECS = 15
 
+# Wire protocols the agent's rcon package actually implements. Keep in sync with
+# the GameTemplate CRD's rcon.protocol enum and agent/internal/rcon/. A protocol
+# listed here but not implemented lets a module ship a console that never
+# connects, so this list is deliberately conservative.
+RCON_PROTOCOLS = ("source", "telnet", "websocket", "none")
+
+
 
 @dataclass
 class Finding:
@@ -627,13 +634,13 @@ def rule_rcon_protocol(spec: dict) -> list[Finding]:
         # The CRD marks Protocol +kubebuilder:default=source, so an omitted
         # key resolves to "source" at apply time — not a missing/invalid value.
         return []
-    if proto not in ("source", "telnet", "none"):
+    if proto not in RCON_PROTOCOLS:
         return [
             Finding(
                 ERROR,
                 "bad-rcon-protocol",
-                f"rcon.protocol={proto!r} is not one of source/telnet/none — "
-                "the agent implements no others.",
+                f"rcon.protocol={proto!r} is not one of "
+                f"{'/'.join(sorted(RCON_PROTOCOLS))} — the agent implements no others.",
             )
         ]
     return []

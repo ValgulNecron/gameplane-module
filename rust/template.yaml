@@ -1,17 +1,17 @@
 # Gameplane GameTemplate for Rust (dedicated server).
 #
-# Backed by didstopia/rust-server. Rust's RCON is WebSocket-only
-# (Facepunch's own `rcon.web`/webrcon) — it does NOT speak the Source RCON
-# wire protocol the agent implements, and there's no raw-TCP fallback. So
-# rcon.protocol is "none" here; RCON-transport capabilities (players list,
-# moderation, actions) are unavailable for Rust in Gameplane today.
+# Backed by didstopia/rust-server. Rust's RCON is WebSocket-only — Facepunch's
+# own `rcon.web`/webrcon, which does NOT speak the Source RCON wire protocol.
+# The agent now implements it (rcon.protocol: websocket), so the console,
+# players list, moderation, quiesce and quick actions all work over RCON.
 #
-# RustDedicated does accept an attached interactive console (every
-# Docker/tmux community wrapper drives it this way), which matches
-# consoleMode: pty. The clean-stop sequence ("server.save" then "quit") is
-# real and documented, and now actually runs: the operator's PTY-stdin stop
-# transport writes it to the game container before scaling down, so a stop
-# or restart saves the world instead of taking a SIGTERM mid-write.
+# The image enables webrcon by default (RUST_RCON_WEB=1) and serves plain
+# ws:// (RUST_RCON_SECURE_WEBSOCKET=0), which is what the agent's client
+# dials. The password comes from RUST_RCON_PASSWORD, injected by the operator.
+#
+# playerlist returns a JSON array rather than lines, which is fine: the agent
+# applies players.list.entryRegex with FindAll over the whole reply, so the
+# DisplayName regex below pulls every player out of the single-line JSON.
 #
 # Cluster-scoped; apply once per cluster:
 #     kubectl apply -f modules/rust/template.yaml
@@ -42,11 +42,9 @@ spec:
       containerPort: 28015
       protocol: UDP
       advertise: true
-    # Rust's RCON (28016) is WebSocket-over-TCP, not Source RCON — the
-    # agent can't dial it (see header comment). Declared here only so a
-    # player who wants to use their own WebRCON client can be routed to it
-    # via a networking.portOverrides / manual Service edit; Gameplane's own
-    # console/RCON features never use this port.
+    # Rust's RCON: WebSocket-over-TCP (webrcon), which the agent now speaks.
+    # Not advertised — the dashboard reaches it in-pod; exposing it publicly
+    # would put the RCON password on the internet.
     - name: rcon
       containerPort: 28016
       protocol: TCP
@@ -61,16 +59,28 @@ spec:
     limits: {cpu: "4", memory: 8Gi}
 
   rcon:
-    protocol: none
+    protocol: websocket
+    port: 28016
+    # The image reads its RCON password from RUST_RCON_PASSWORD (default
+    # "docker" — the operator generates one and injects it here instead).
+    passwordEnv: RUST_RCON_PASSWORD
 
-  consoleMode: pty
+  consoleMode: rcon
 
   capabilities:
-    # Runs over the pty-stdin transport once the operator's PTY-stop path
-    # lands (see header comment) — both commands are Facepunch/community-
-    # documented as the clean-shutdown sequence.
+    # Facepunch/community-documented clean-shutdown sequence. Now runs over
+    # RCON rather than pty-stdin, so a stop or restart saves the world instead
+    # of taking a SIGTERM mid-write.
     lifecycle:
       stop: ["server.save", "quit"]
+    players:
+      # playerlist returns a JSON array of player objects; entryRegex is applied
+      # with FindAll across the whole reply, so this lifts out every DisplayName.
+      list:
+        command: "playerlist"
+        entryRegex: '"DisplayName":"(?P<name>[^"]*)"'
+      kick: 'kick "{{.Player}}"{{if .Reason}} "{{.Reason}}"{{end}}'
+      ban: 'ban "{{.Player}}"{{if .Reason}} "{{.Reason}}"{{end}}'
     mods:
       loaders:
         oxide:
