@@ -34,7 +34,7 @@ metadata:
 spec:
   displayName: Project Zomboid
   game: project-zomboid
-  version: 1.0.2
+  version: 1.0.3
   accentColor: "#336600"
   description: |
     Project Zomboid dedicated server using
@@ -44,14 +44,18 @@ spec:
 
   image: sknnr/zomboid-dedicated-server:latest
 
-  # REQUIRED. The image is rootless and runs as UID/GID 1000. Its own README:
+  # REQUIRED. The image is rootless. Its README SAYS uid 1000 — that is WRONG;
+  # the image's own /etc/passwd has `steam:x:10000:10000` and /home/steam is
+  # owned by 10000:10000, so running as 1000 gets EACCES from SteamCMD
+  # ("Couldn't create directory /home/steam/Steam/package, got error 13").
+  # Trust the image, not its docs. The README's point still stands:
   # "should not be run as the root user. Attempting to do so will prevent the
   # server from starting." fsGroup makes the kubelet chown the PVC so the
   # non-root user can write its saves.
   security:
-    runAsUser: 1000
-    runAsGroup: 1000
-    fsGroup: 1000
+    runAsUser: 10000
+    runAsGroup: 10000
+    fsGroup: 10000
 
   env:
     # REQUIRED alongside spec.security.runAsUser. Setting runAsUser
