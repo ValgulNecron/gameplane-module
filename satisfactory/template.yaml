@@ -5,11 +5,32 @@
 # several GB — the install output streams to the dashboard's Logs tab,
 # source "pod").
 #
-# Satisfactory has no RCON or stdin console, so there is no Console tab and
-# no player-moderation / quiesce capabilities — the server is configured
-# entirely through env vars (surfaced in the New Server wizard) and managed
-# in-game. Backups snapshot the /config volume (gamefiles + saves); the
-# image saves and shuts down cleanly on SIGTERM.
+# Satisfactory has no socket RCON and no stdin console. What it does have is
+# an official HTTPS function API on the game port (7777), which the agent now
+# speaks (rcon.protocol: satisfactory): PasswordLogin yields a bearer token,
+# then RunCommand runs a console command. That drives the Console tab and
+# quick actions.
+#
+# ONE-TIME MANUAL STEP — the console stays inert until you do this. Unlike
+# every other game here, Satisfactory's admin password is not a server config
+# value the operator can inject: it only exists AFTER a human claims the
+# server in-game (Server Manager -> claim -> set an admin password). The image
+# exposes no env var or file to preseed it. So after claiming:
+#
+#     kubectl exec <pod> -c game -- \
+#       sh -c 'mkdir -p /config/gameplane && \
+#              printf %s "<the admin password you set>" \
+#              > /config/gameplane/rcon-admin-password'
+#
+# The agent reads that file (rcon.passwordFile) on each connection and logs
+# in with it. Until the file exists with the right password, the Console tab
+# reports an auth failure — that is expected, not a bug.
+#
+# No capabilities.players: the API exposes a player COUNT (QueryServerState)
+# but no way to enumerate names or IDs, so a players list can't be populated
+# and moderation can't target a player. Left unset rather than shipping a tab
+# that can't work. Backups snapshot the /config volume (gamefiles + saves);
+# the image saves and shuts down cleanly on SIGTERM.
 #
 # The versions[] picker selects the Steam branch: the public release or the
 # experimental build (STEAMBETA), both running the same image.
@@ -87,8 +108,13 @@ spec:
 
   # Satisfactory speaks neither RCON nor a stdin console.
   rcon:
-    protocol: none
-  consoleMode: none
+    protocol: satisfactory
+    port: 7777
+    # Not an image-managed file: the admin writes their claimed admin
+    # password here once (see the header comment). Relative to the /config
+    # data mount, so this is /config/gameplane/rcon-admin-password.
+    passwordFile: gameplane/rcon-admin-password
+  consoleMode: rcon
 
   # No probes declared: the operator adds none by default, so the pod is Ready
   # as soon as the container runs and the agent sidecar's heartbeat drives the
