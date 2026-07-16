@@ -23,18 +23,27 @@ maintainer's own infrastructure rather than a major registry. If that's
 a concern for your deployment, mirror the image into your own registry
 before installing.
 
-## No console, no RCON
+## Console and admin
 
-DayZ speaks proprietary **BattlEye RCon**, not Source RCON or telnet —
-Gameplane's agent has no client for it, so `rcon.protocol: none`. The
-game binary also has no interactive admin console of its own (admin is
-BattlEye RCon, an external tool, or an in-game admin mod only), so no
-`consoleMode` is set either — the Console tab shows "no live console."
-With no reachable transport, there is no `capabilities` block at all: no
-lifecycle stop sequence, no moderation, no quiesce. The server relies on
-SIGTERM + DayZ's own autosave; whether that's fully safe under a bare
-SIGTERM is not documented anywhere authoritative that was found —
-consider a generous `stopGracePeriodSeconds` on the GameServer.
+DayZ speaks proprietary **BattlEye RCon** — not Source RCON or telnet.
+Gameplane's agent implements it (`rcon.protocol: battleye`, UDP 2305), so
+the Console tab and the players list both work. ServerZ only writes a
+`beserver_x64.cfg` when one of `BE_IP`/`BE_PORT`/`BE_PASSWORD` is set, so
+this template sets all three: the operator injects the generated password
+into `BE_PASSWORD`, and `BE_IP` pins the listener to loopback — the agent
+sidecar shares the pod's network namespace and reaches it there, while an
+RCon port that isn't on a public interface can't be brute-forced.
+
+**No kick/ban buttons, and no quick actions.** BattlEye targets players by
+*number* rather than name, so wiring moderation to the name the list
+returns would risk hitting the wrong player. Its command set is also too
+restricted to verify a broadcast for DayZ specifically, so no quick actions
+are declared rather than shipping buttons that may error.
+
+**No lifecycle stop sequence.** DayZ persists continuously rather than on a
+save command, so a SIGTERM isn't the data-loss risk it is for Minecraft or
+Valheim; a stop sequence that doesn't reliably work across builds would be
+a lie. Consider a generous `stopGracePeriodSeconds` on the GameServer.
 
 ## Mods
 
