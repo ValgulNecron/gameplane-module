@@ -34,7 +34,7 @@ metadata:
 spec:
   displayName: Project Zomboid
   game: project-zomboid
-  version: 1.0.4
+  version: 1.0.5
   categories: [Survival, Horror, Co-op]
   accentColor: "#336600"
   description: |
@@ -130,6 +130,7 @@ spec:
         displayName: Broadcast
         description: Send a server message to everyone.
         icon: megaphone
+        group: Server
         command: 'servermsg "{{.Params.message}}"'
         params:
           - name: message
@@ -139,7 +140,31 @@ spec:
       - id: save-world
         displayName: Save world
         icon: save
+        group: World
         command: "save"
+      - id: reload-config
+        displayName: Reload server options
+        icon: settings
+        group: Server
+        command: "reloadoptions"
+      - id: chopper-event
+        displayName: Helicopter event
+        description: Trigger the helicopter flyover that draws zombies.
+        icon: siren
+        group: World
+        command: "chopper"
+      - id: gunshot-event
+        displayName: Gunshot event
+        description: Trigger a gunshot noise that draws zombies.
+        icon: siren
+        group: World
+        command: "gunshot"
+      - id: alarm-event
+        displayName: Alarm event
+        description: Trigger a building alarm.
+        icon: siren
+        group: World
+        command: "alarm"
 
   probes:
     # Game/direct ports are UDP; RCON is the only TCP port, so it's the

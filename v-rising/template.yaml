@@ -27,7 +27,7 @@ metadata:
 spec:
   displayName: V Rising
   game: v-rising
-  version: 1.0.1
+  version: 1.0.2
   categories: [Survival, PvP, Co-op]
   accentColor: "#8b0000"
   description: |
@@ -86,12 +86,30 @@ spec:
       - id: broadcast
         displayName: Broadcast
         icon: megaphone
+        group: Server
         command: "announce {{.Params.message}}"
         params:
           - name: message
             displayName: Message
             type: string
             required: true
+      - id: announce-restart
+        displayName: Announce restart
+        description: Stunlock's own restart warning — auto-localised to each player's language.
+        icon: rotate-ccw
+        group: Server
+        command: "announcerestart {{.Params.minutes}}"
+        params:
+          - name: minutes
+            displayName: Minutes
+            type: int
+            default: "10"
+            required: true
+      - id: cancel-shutdown
+        displayName: Cancel shutdown
+        icon: rotate-ccw
+        group: Server
+        command: "cancelshutdown"
 
   configSchema:
     - name: SERVERNAME

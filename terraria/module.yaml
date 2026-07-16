@@ -1,7 +1,7 @@
 apiVersion: gameplane.local/module/v1
 name: terraria
 displayName: Terraria
-version: 2.1.1
+version: 2.2.0
 game: terraria
 categories: [Sandbox, Survival, Adventure, Modded]
 summary: Terraria + tModLoader dedicated server (passivelemon/terraria-docker) with a vanilla/tModLoader version picker and a tModLoader ModPacks volume. Console via container stdin.
