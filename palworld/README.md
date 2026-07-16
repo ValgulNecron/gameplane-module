@@ -22,21 +22,29 @@ game version (that always tracks Steam):
 
 ## Console & admin
 
-RCON is enabled (Source protocol, port 25575). The operator generates a
+RCON is **deprecated** by Palworld upstream ("scheduled to stop functioning
+in an upcoming update" per docs.palworldgame.com), so this module talks to
+Palworld's **REST admin API** instead (port 8212). The operator generates a
 per-server password and injects it as `ADMIN_PASSWORD`, which the image
-uses for **both** RCON and the in-game admin password — read it from the
-`<server>-rcon` Secret if you need to `/AdminPassword` in game.
+uses for **both** the REST API and the in-game admin password — read it
+from the `<server>-rcon` Secret if you need to `/AdminPassword` in game.
 
-Graceful stop runs `Save` then `Shutdown 1` over RCON, so the server never
-takes a SIGTERM mid-save. Backups snapshot the data volume directly (no
-quiesce — Palworld's `Save` is a one-shot flush, not a pausable state);
-freshness therefore rides the server's autosave interval, and the "Save
-world" action forces a flush on demand.
+Graceful stop runs `save` then `shutdown 1` over the REST API, so the
+server never takes a SIGTERM mid-save. Backups snapshot the data volume
+directly (no quiesce — Palworld's `save` is a one-shot flush, not a
+pausable state); freshness therefore rides the server's autosave interval,
+and the "Save world" action forces a flush on demand.
 
-There is **no Players tab** for Palworld yet: its RCON has no
-Minecraft-style `list` command (`ShowPlayers` returns CSV the agent's
-player poller doesn't parse), so the tab would render broken. Kick/ban via
-the Console tab (`KickPlayer <steamid>` / `BanPlayer <steamid>`) if needed.
+**Players tab** shows who's online (`GET /v1/api/players`). There's no
+kick/ban here, though: the REST API moderates by a player's `userId`
+(e.g. `steam_12345`), a different field from the display name the Players
+tab lists, and Gameplane only carries one value through that pipeline — so
+a kick/ban button here would target the wrong (or no) account. Use the
+in-game admin commands, or the REST API directly, for kick/ban.
+
+**Quick actions**: Broadcast message, Save world, and Announce restart
+(counts down, then shuts down cleanly) — see the server detail page's
+Actions panel.
 
 ## Mods (.pak)
 

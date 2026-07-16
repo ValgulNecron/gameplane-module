@@ -20,7 +20,7 @@ spec:
   displayName: Terraria
   game: terraria
   # Kept in lockstep with module.yaml's bundle version from 2.1.0 onward.
-  version: 2.1.1
+  version: 2.2.0
   categories: [Sandbox, Survival, Adventure, Modded]
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#4a90d9"
@@ -94,6 +94,65 @@ spec:
       failureThreshold: 30
 
   capabilities:
+    # Terraria has no RCON (rcon.protocol: none above), so every action
+    # below runs over stdin pod-attach instead of RCON — fire-and-forget:
+    # no output returns inline, it appears in the Console tab. transport:
+    # stdin is set explicitly on each action for clarity, even though it's
+    # also what the default resolves to for this template.
+    #
+    # Terraria's dedicated-server console has no weather command, so there
+    # is no set-weather action here (unlike minecraft-java/project-zomboid).
+    actions:
+      - id: broadcast
+        displayName: Broadcast message
+        group: Server
+        icon: megaphone
+        transport: stdin
+        command: "say {{.Params.message}}"
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+      - id: save-world
+        displayName: Save world
+        group: World
+        icon: save
+        transport: stdin
+        command: "save"
+      - id: set-time
+        displayName: Set time
+        group: World
+        icon: clock
+        transport: stdin
+        # The command IS the word: dawn/noon/dusk/midnight are each their
+        # own console command on Terraria's server console (not a command
+        # that takes a time-of-day argument), so the template is just the
+        # param itself.
+        command: "{{.Params.time}}"
+        params:
+          - name: time
+            displayName: Time of day
+            type: enum
+            enum: ["dawn", "noon", "dusk", "midnight"]
+            default: noon
+            required: true
+      - id: settle-water
+        displayName: Settle water
+        description: Settle all flowing liquids.
+        group: World
+        transport: stdin
+        command: "settle"
+      - id: set-motd
+        displayName: Set MOTD
+        group: Server
+        transport: stdin
+        command: "motd {{.Params.message}}"
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
     # tModLoader modpacks live under <config>/ModPacks; the active modpack is
     # picked with the MODPACK config field. Vanilla has no loaders entry, so
     # vanilla servers show no Mods tab.

@@ -1,7 +1,7 @@
 apiVersion: gameplane.local/module/v1
 name: dont-starve-together
 displayName: Don't Starve Together
-version: 1.0.1
+version: 1.1.0
 game: dont-starve-together
 categories: [Survival, Co-op]
 summary: DST dedicated server.

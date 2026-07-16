@@ -43,7 +43,7 @@ metadata:
 spec:
   displayName: 7 Days to Die
   game: 7-days-to-die
-  version: 2.0.3
+  version: 2.0.4
   categories: [Survival, Horror, Co-op, Shooter]
   accentColor: "#8b0000"
   description: |
@@ -136,6 +136,12 @@ spec:
   # independent of storage.mountPath, so they still work: install runs
   # before the pod is considered ready, and re-runs (fetching fresh) on
   # every restart since serverfiles/ isn't persisted either.
+  #
+  # No capabilities.actions either (on top of requiring RCON, which this
+  # template doesn't have): 7 Days to Die's `settime` parameter format is
+  # undocumented and `settime 0` reportedly crashes the server, so even if
+  # RCON were wired up here, shipping a time-control action would be a
+  # guess. No actions.
   configSchema:
     - name: UNDEAD_LEGACY
       displayName: Install Undead Legacy

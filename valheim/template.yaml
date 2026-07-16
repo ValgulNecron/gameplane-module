@@ -21,7 +21,7 @@ metadata:
 spec:
   displayName: Valheim (Dedicated)
   game: valheim
-  version: 2.3.2
+  version: 2.3.3
   categories: [Survival, Co-op, Building]
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#d99a2b"
@@ -107,7 +107,11 @@ spec:
       periodSeconds: 15
       failureThreshold: 10
 
-  # No RCON, so no players/quiesce/actions/status capabilities — mods only.
+  # No RCON, so no players/quiesce/status capabilities — mods only. No
+  # actions either: despite consoleMode: pty, research confirms the Valheim
+  # dedicated server binary has NO stdin command input at all — the pty
+  # here only streams stdout, it never reads commands back. Admin commands
+  # are in-game only, via the F5 console, so no quick action is possible.
   # BepInEx plugins live under /config/bepinex/plugins; the image loads them
   # when BEPINEX is enabled (see the config field below).
   capabilities:

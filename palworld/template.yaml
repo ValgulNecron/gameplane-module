@@ -10,10 +10,17 @@
 # always tracks Steam): latest, the v2 major line, or a pinned wrapper
 # release for change-averse servers.
 #
-# RCON is native Source protocol; the image uses ADMIN_PASSWORD as the RCON
-# password, so the operator-generated per-server secret doubles as the
-# in-game admin password. The players.list capability parses ShowPlayers'
-# CSV output to populate a Players tab.
+# RCON is OFFICIALLY DEPRECATED upstream (docs.palworldgame.com: "scheduled
+# to stop functioning in an upcoming update"), so this module now runs
+# Palworld's REST admin API instead (rcon.protocol: palworld). The REST API
+# authenticates with HTTP Basic (user "admin") against the server's
+# AdminPassword — the same secret RCON used, so the operator-generated
+# password still lands via ADMIN_PASSWORD, unchanged. The API is HTTP-only
+# (no TLS), which is fine here: the agent dials it pod-local, never over the
+# network. It's also strictly better than RCON for this game: the REST
+# player list returns real per-player records (RCON's ShowPlayers was a CSV
+# scrape), and its announce endpoint keeps spaces in the message, where
+# RCON's Broadcast truncated at the first space.
 #
 # Cluster-scoped; apply once per cluster:
 #     kubectl apply -f modules/palworld/template.yaml
@@ -28,7 +35,7 @@ spec:
   displayName: Palworld (Dedicated)
   game: palworld
   # Kept in lockstep with module.yaml's bundle version.
-  version: 1.1.2
+  version: 1.2.0
   categories: [Survival, Sandbox, Co-op]
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#3d9dd9"
@@ -36,7 +43,8 @@ spec:
     Palworld dedicated server using
     [thijsvanloef/palworld-server-docker](https://github.com/thijsvanloef/palworld-server-docker).
     The game installs via steamcmd on first boot (several GB — give it a few
-    minutes). RCON console, a save-then-shutdown graceful stop, and a `.pak` mod volume
+    minutes). Console via Palworld's REST admin API (RCON is deprecated
+    upstream), a save-then-shutdown graceful stop, and a `.pak` mod volume
     with archive install from the Mods tab.
 
   # Fallback image when a server selects no version. versions[] below is the
@@ -55,10 +63,10 @@ spec:
     fsGroup: 1000
 
   env:
-    - name: RCON_ENABLED
+    - name: REST_API_ENABLED
       value: "true"
-    - name: RCON_PORT
-      value: "25575"
+    - name: REST_API_PORT
+      value: "8212"
     - name: PORT
       value: "8211"
     - name: QUERY_PORT
@@ -77,9 +85,10 @@ spec:
       containerPort: 27015
       protocol: UDP
       advertise: false
-    - name: rcon
-      containerPort: 25575
+    - name: rest-api
+      containerPort: 8212
       protocol: TCP
+      # An admin API must never be exposed publicly.
       advertise: false
 
   # The whole server install lives on the data volume (steamcmd target dir),
@@ -97,11 +106,11 @@ spec:
       memory: 12Gi
 
   rcon:
-    protocol: source
-    port: 25575
-    # PasswordSecretRef left unset — the operator generates a password into
-    # "<gameserver>-rcon" and injects it as ADMIN_PASSWORD, which the image
-    # uses as both the RCON and in-game admin password.
+    protocol: palworld
+    port: 8212
+    # The REST API authenticates with HTTP Basic (user "admin") against the
+    # server's AdminPassword — the same secret RCON used, so the operator's
+    # generated password still lands via ADMIN_PASSWORD, unchanged.
     passwordEnv: ADMIN_PASSWORD
 
   # Wrapper-image channels. The game version always tracks Steam (steamcmd
@@ -124,24 +133,67 @@ spec:
 
   capabilities:
     players:
+      # /v1/api/players returns JSON; the agent applies entryRegex with
+      # FindAll across the whole reply, so this lifts out every player's
+      # display name.
       list:
-        command: "ShowPlayers"
-        entryRegex: "^([^,]+),[0-9]+,"
-    # No quiesce block: Palworld's "Save" is a one-shot flush, not a
+        command: "players"
+        entryRegex: '"name"\s*:\s*"(?P<name>[^"]*)"'
+      # No kick/ban: Palworld's REST kick/ban moderate by userId (e.g.
+      # "steam_12345"), a field distinct from the display "name" captured
+      # above — and the agent's players-list pipeline has only one captured
+      # value, reused both for the Players tab display and for {{.Player}}
+      # in a kick/ban template. Capturing "name" here means a kick/ban
+      # action would send the display name where the REST API expects a
+      # userId, silently targeting nothing or the wrong account. Same
+      # principle as DayZ (BE moderates by player number, not name): omit
+      # rather than ship a button that can't reliably work.
+    # No quiesce block: Palworld's "save" is a one-shot flush, not a
     # pausable state, so the pause/resume quiesce model doesn't fit (the
     # operator requires both a quiesce and an unquiesce command). Backups
     # snapshot the volume while the server autosaves; lifecycle.stop below
-    # saves on graceful stop. save-then-shutdown on stop — Palworld's
-    # Shutdown takes seconds + a message; 1s is effectively "now" after a
-    # completed Save.
+    # saves on graceful stop.
     lifecycle:
-      stop: ["Save", "Shutdown 1"]
+      stop: ["save", "shutdown 1"]
     actions:
+      - id: broadcast
+        displayName: Broadcast message
+        description: Send a chat message to everyone on the server.
+        icon: megaphone
+        group: Server
+        # Unlike the deprecated RCON Broadcast (which truncated at the
+        # first space), the REST announce endpoint keeps the full message.
+        command: "announce {{.Params.message}}"
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
       - id: save-world
         displayName: Save world
         description: Flush the world to disk now.
         icon: save
-        command: "Save"
+        group: World
+        command: "save"
+      - id: announce-restart
+        displayName: Announce restart
+        description: Warn players, then shut down after a countdown so the operator restarts cleanly.
+        icon: rotate-ccw
+        group: Server
+        danger: true
+        confirm: true
+        command: "shutdown {{.Params.seconds}} {{.Params.message}}"
+        params:
+          - name: seconds
+            displayName: Countdown (seconds)
+            type: int
+            default: "60"
+            required: true
+          - name: message
+            displayName: Message
+            type: string
+            default: "Server restarting shortly."
+            required: true
     # Engine-native .pak mods, loaded from Pal/Content/Paks/~mods inside the
     # server install. URL installs are limited to GitHub (most server-side
     # pak mods publish there); local files can be added via upload. UE4SS
@@ -161,22 +213,22 @@ spec:
 
   probes:
     # First boot = multi-GB steamcmd download before anything listens, so
-    # the startup probe budgets ~30 minutes. RCON's TCP port is the only
-    # reliable liveness signal (game traffic is UDP).
+    # the startup probe budgets ~30 minutes. The REST API's TCP port is the
+    # only reliable liveness signal (game traffic is UDP).
     startup:
       tcpSocket:
-        port: rcon
+        port: rest-api
       initialDelaySeconds: 30
       periodSeconds: 15
       failureThreshold: 120
     readiness:
       tcpSocket:
-        port: rcon
+        port: rest-api
       periodSeconds: 10
       failureThreshold: 6
     liveness:
       tcpSocket:
-        port: rcon
+        port: rest-api
       periodSeconds: 30
       failureThreshold: 5
 

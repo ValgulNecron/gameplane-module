@@ -7,7 +7,7 @@ metadata:
 spec:
   displayName: Don't Starve Together
   game: dont-starve-together
-  version: 1.0.1
+  version: 1.1.0
   categories: [Survival, Co-op]
   accentColor: "#cc0000"
   description: DST dedicated server.
@@ -44,6 +44,47 @@ spec:
       # shut down cleanly. Note: the stdin attachment may reach the master
       # shard or caves shard depending on container startup order.
       stop: ["c_save()", "c_shutdown(true)"]
+    # DST's server console is a Lua console (hence the c_ function-call
+    # syntax below, not plain-text RCON commands) reached only via stdin —
+    # there is no RCON (rcon.protocol: none above), so every action sets
+    # transport: stdin explicitly. Stdin actions are fire-and-forget: the
+    # agent writes to the container's stdin and returns immediately with no
+    # command output; any response appears in the Console tab instead.
+    actions:
+      - id: broadcast
+        displayName: Broadcast message
+        description: Send a chat message to everyone on the server.
+        icon: megaphone
+        group: Server
+        transport: stdin
+        command: 'c_announce("{{.Params.message}}")'
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+      - id: save-world
+        displayName: Save world
+        description: Flush the world to disk now.
+        icon: save
+        group: World
+        transport: stdin
+        command: "c_save()"
+      - id: rollback
+        displayName: Rollback world
+        description: Roll the world back by N day-saves. Players lose progress since then.
+        icon: rotate-ccw
+        group: World
+        danger: true
+        confirm: true
+        transport: stdin
+        command: "c_rollback({{.Params.days}})"
+        params:
+          - name: days
+            displayName: Days
+            type: int
+            default: "1"
+            required: true
   configSchema:
     - name: DST_CLUSTER_TOKEN
       displayName: Cluster Token

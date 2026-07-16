@@ -22,7 +22,7 @@ metadata:
 spec:
   displayName: Counter-Strike 2
   game: cs2
-  version: 1.0.3
+  version: 1.0.4
   categories: [Shooter, PvP]
   accentColor: "#f4a900"
   description: |
@@ -94,12 +94,53 @@ spec:
       - id: broadcast
         displayName: Broadcast
         icon: megaphone
+        group: Server
         command: 'say "{{.Params.message}}"'
         params:
           - name: message
             displayName: Message
             type: string
             required: true
+      - id: restart-round
+        displayName: Restart round
+        icon: rotate-ccw
+        group: World
+        command: "mp_restartgame {{.Params.seconds}}"
+        params:
+          - name: seconds
+            displayName: Seconds
+            type: int
+            default: "1"
+            required: true
+      - id: change-map
+        displayName: Change map
+        icon: map
+        group: World
+        danger: true
+        confirm: true
+        command: "changelevel {{.Params.map}}"
+        params:
+          - name: map
+            displayName: Map
+            type: string
+            default: de_dust2
+            required: true
+      - id: reload-config
+        displayName: Exec config
+        icon: settings
+        group: Server
+        command: "exec {{.Params.cfg}}"
+        params:
+          - name: cfg
+            displayName: Config file
+            type: string
+            default: server.cfg
+            required: true
+      - id: warmup-start
+        displayName: Start warmup
+        icon: clock
+        group: World
+        command: "mp_warmup_start"
     # No version/loader axis for CS2, so mods use the legacy single-path
     # form. Metamod stays at game/csgo/addons; CounterStrikeSharp nests one
     # level deeper (game/csgo/addons/counterstrikesharp/plugins) but is

@@ -22,7 +22,7 @@ spec:
   displayName: Minecraft (Java Edition)
   game: minecraft-java
   # Kept in lockstep with module.yaml's bundle version from 2.5.0 onward.
-  version: 2.7.2
+  version: 2.8.0
   categories: [Sandbox, Survival, Building, Modded, Creative]
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#5b9a3e"
@@ -338,6 +338,7 @@ spec:
         displayName: Broadcast message
         description: Send a chat message to everyone on the server.
         icon: megaphone
+        group: Server
         command: "say {{.Params.message}}"
         params:
           - name: message
@@ -347,6 +348,7 @@ spec:
       - id: set-time
         displayName: Set time
         icon: clock
+        group: World
         command: "time set {{.Params.time}}"
         params:
           - name: time
@@ -357,6 +359,7 @@ spec:
       - id: set-weather
         displayName: Set weather
         icon: cloud
+        group: World
         command: "weather {{.Params.weather}}"
         params:
           - name: weather
@@ -364,29 +367,45 @@ spec:
             type: enum
             enum: ["clear", "rain", "thunder"]
             default: clear
-      - id: whitelist-add
-        displayName: Whitelist player
-        icon: user-plus
-        command: "whitelist add {{.Params.player}}"
+      - id: set-difficulty
+        displayName: Set difficulty
+        icon: settings
+        group: World
+        command: "difficulty {{.Params.level}}"
         params:
-          - name: player
-            displayName: Player name
-            type: string
+          - name: level
+            displayName: Difficulty
+            type: enum
+            enum: ["peaceful", "easy", "normal", "hard"]
+            default: normal
             required: true
-      - id: whitelist-remove
-        displayName: Remove from whitelist
-        icon: user-minus
-        command: "whitelist remove {{.Params.player}}"
-        params:
-          - name: player
-            displayName: Player name
-            type: string
-            required: true
+      # whitelist-add / whitelist-remove were removed here — whitelist
+      # management now lives solely on the Players tab
+      # (capabilities.players.whitelist above), so quick actions don't
+      # duplicate that UI.
       - id: save-world
         displayName: Save world
         description: Flush the world to disk now.
         icon: save
-        command: "save-all"
+        group: World
+        command: "save-all flush"
+      - id: announce-restart
+        displayName: Announce restart
+        description: Warn players, save the world, then stop the server.
+        icon: rotate-ccw
+        group: Server
+        danger: true
+        confirm: true
+        commands:
+          - 'say {{.Params.message}}'
+          - "save-all flush"
+          - "stop"
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            default: "Server restarting shortly — please log out safely."
+            required: true
     status:
       metrics:
         - id: seed

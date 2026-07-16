@@ -48,7 +48,7 @@ spec:
   displayName: Satisfactory (Dedicated)
   game: satisfactory
   # Kept in lockstep with module.yaml's bundle version.
-  version: 1.0.1
+  version: 1.1.1
   categories: [Simulation, Building, Sandbox, Co-op]
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#e59344"
@@ -56,9 +56,11 @@ spec:
     Satisfactory dedicated server using
     [wolveix/satisfactory-server](https://github.com/wolveix/satisfactory-server).
     The game installs via steamcmd on first boot (several GB — give it a few
-    minutes; progress streams to the Logs tab). No RCON/console: configure the
-    server from the wizard's env fields and manage it in-game. Choose the
-    stable or experimental Steam branch in the New Server wizard.
+    minutes; progress streams to the Logs tab). Console runs over
+    Satisfactory's own HTTPS admin API and needs a one-time in-game server
+    claim first (see the module README). The API exposes no player list, so
+    there's no Players tab. Choose the stable or experimental Steam branch
+    in the New Server wizard.
 
   # Fallback image when a server selects no version. versions[] below is the
   # authoritative source for the wizard's picker.
@@ -139,6 +141,27 @@ spec:
       env:
         - name: STEAMBETA
           value: "true"
+
+  # Satisfactory's admin API (see rcon.protocol above) is deliberately
+  # sparse — no broadcast, no time control, and no player enumeration
+  # (which is also why there's no capabilities.players here). save-game,
+  # via the RunCommand API, is the one verified action. Like the Console
+  # tab, it stays inert until the one-time in-game claim + admin-password
+  # file documented in the header comment above is done.
+  capabilities:
+    actions:
+      - id: save-game
+        displayName: Save game
+        icon: save
+        group: World
+        command: "server.SaveGame {{.Params.name}}"
+        params:
+          - name: name
+            displayName: Save name
+            description: Save file name.
+            type: string
+            default: "gameplane"
+            required: true
 
   # Field names match wolveix/satisfactory-server env vars exactly.
   configSchema:

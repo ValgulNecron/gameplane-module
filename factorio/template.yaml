@@ -28,7 +28,7 @@ spec:
   displayName: Factorio (Headless)
   game: factorio
   # Kept in lockstep with module.yaml's bundle version.
-  version: 1.1.1
+  version: 1.1.2
   categories: [Simulation, Building, Sandbox, Modded, Co-op]
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#e39827"
@@ -108,6 +108,18 @@ spec:
       list:
         command: "/players online"
         entryRegex: "^\\s+(.+?) \\(online\\)$"
+    # Factorio's admin console genuinely supports very few commands. There is
+    # no plain say/broadcast console command — a chat broadcast needs a Lua
+    # /silent-command game.print(...), which we haven't verified, so it isn't
+    # shipped — and no console time/weather control. save-world (/save) is
+    # the one action we could verify; shipping only it is the honest set.
+    actions:
+      - id: save-world
+        displayName: Save game
+        description: Flush the world to disk now.
+        icon: save
+        group: World
+        command: "/save"
     # Factorio loads .zip mods straight from the mods dir (no extraction).
     # The in-app browser searches the official mod portal; downloads need
     # the player's own factorio.com credentials, so the panel hands off to

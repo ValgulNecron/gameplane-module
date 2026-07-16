@@ -58,7 +58,7 @@ metadata:
 spec:
   displayName: "ARK: Survival Ascended"
   game: ark-survival-ascended
-  version: 1.0.6
+  version: 1.0.7
   categories: [Survival, PvP, Co-op, Modded]
   accentColor: "#00b2e2"
   description: |
@@ -144,6 +144,7 @@ spec:
         displayName: Broadcast
         description: Send a chat message to everyone on the server.
         icon: megaphone
+        group: Server
         command: "ServerChat {{.Params.message}}"
         params:
           - name: message
@@ -153,7 +154,28 @@ spec:
       - id: save-world
         displayName: Save world
         icon: save
+        group: World
         command: "SaveWorld"
+      - id: set-time
+        displayName: Set time of day
+        description: Time as HH:MM.
+        icon: clock
+        group: World
+        command: "SetTimeOfDay {{.Params.time}}"
+        params:
+          - name: time
+            displayName: Time
+            type: string
+            default: "12:00"
+            required: true
+      - id: destroy-wild-dinos
+        displayName: Destroy wild dinos
+        description: Clears and respawns all wild creatures. Tamed creatures are unaffected.
+        icon: skull
+        group: World
+        danger: true
+        confirm: true
+        command: "DestroyWildDinos"
     mods:
       # ASA has no mods directory and no mods env — its only hook is a
       # -mods=<curseforge-id>,... flag on the launch string, which also
