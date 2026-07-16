@@ -7,7 +7,7 @@ metadata:
 spec:
   displayName: Enshrouded
   game: enshrouded
-  version: 1.0.1
+  version: 1.0.2
   categories: [Survival, Co-op, Building, Adventure]
   accentColor: "#2a4b7c"
   description: Enshrouded dedicated server.
@@ -27,6 +27,8 @@ spec:
   resources:
     requests: {cpu: "2", memory: 8Gi}
     limits: {cpu: "4", memory: 16Gi}
+  # No remote console of any kind (no RCON, no stdin), so no capabilities
+  # block and no actions — there is no transport to run a command over.
   rcon:
     protocol: none
   consoleMode: none

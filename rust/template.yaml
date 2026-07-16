@@ -25,15 +25,15 @@ metadata:
 spec:
   displayName: Rust
   game: rust
-  version: 1.0.2
+  version: 1.1.0
   categories: [Survival, Shooter, PvP]
   accentColor: "#ce422b"
   description: |
     Rust dedicated server using
     [didstopia/rust-server](https://github.com/Didstopia/rust-server).
-    Console attaches to container stdin (pty) — Rust's RCON is
-    WebSocket-only and unsupported here. Oxide plugins are supported via
-    the version picker.
+    Console, players list and moderation run over Rust's WebSocket RCON
+    (Facepunch's webrcon). Oxide plugins are supported via the version
+    picker.
 
   image: didstopia/rust-server:latest
 
@@ -81,6 +81,36 @@ spec:
         entryRegex: '"DisplayName":"(?P<name>[^"]*)"'
       kick: 'kick "{{.Player}}"{{if .Reason}} "{{.Reason}}"{{end}}'
       ban: 'ban "{{.Player}}"{{if .Reason}} "{{.Reason}}"{{end}}'
+    actions:
+      - id: broadcast
+        displayName: Broadcast message
+        description: Send a chat message to everyone on the server.
+        icon: megaphone
+        group: Server
+        command: 'say "{{.Params.message}}"'
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+      - id: save-world
+        displayName: Save world
+        description: Flush the world to disk now.
+        icon: save
+        group: World
+        command: "server.save"
+      - id: set-time
+        displayName: Set time
+        icon: clock
+        group: World
+        command: "env.time {{.Params.time}}"
+        params:
+          - name: time
+            displayName: Time
+            description: Hour of day, 0-24.
+            type: int
+            default: "12"
+            required: true
     mods:
       loaders:
         oxide:

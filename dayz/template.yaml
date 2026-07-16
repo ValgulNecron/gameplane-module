@@ -34,15 +34,15 @@ metadata:
 spec:
   displayName: DayZ
   game: dayz
-  version: 1.0.1
+  version: 1.1.1
   categories: [Survival, Shooter, PvP, Horror]
   accentColor: "#bd2020"
   description: |
     DayZ dedicated server using
-    [GodBleak/ServerZ](https://github.com/GodBleak/ServerZ). No RCON is
-    reachable (DayZ uses proprietary BattlEye RCon, not Source RCON) —
-    manage the server via SIGTERM-safe restarts and the config fields
-    below.
+    [GodBleak/ServerZ](https://github.com/GodBleak/ServerZ). Console and
+    the players list run over BattlEye RCon. Kick/ban aren't offered:
+    BattlEye targets players by number rather than name, so a button would
+    risk hitting the wrong one — moderate in-game instead.
 
   image: registry.godbleak.dev/godbleak/serverz:latest
 
@@ -110,6 +110,10 @@ spec:
       # BattlEye moderation is by player number, not name — the dashboard
       # passes what the list returned, so kick/ban are left unset rather
       # than shipping commands that would silently target the wrong player.
+    # No capabilities.actions either: BattlEye RCon's command set is too
+    # restricted, and a broadcast command ("say -1 <msg>") could not be
+    # verified for DayZ specifically (BE's "say" semantics vary by game).
+    # No actions rather than shipping buttons that may error.
 
   # No console/probes block: the game's only ports are UDP (no TCP surface
   # to probe), and there is no HTTP endpoint either. Kubernetes falls back
