@@ -22,7 +22,7 @@ metadata:
 spec:
   displayName: Counter-Strike 2
   game: cs2
-  version: 1.0.4
+  version: 1.1.0
   categories: [Shooter, PvP]
   accentColor: "#f4a900"
   description: |
@@ -158,6 +158,19 @@ spec:
           - github.com
           - .githubusercontent.com
         maxSizeMB: 256
+      # Steam Workshop Collections browser (Modpacks tab only — Steam has
+      # no Install button by design: Workshop content is fetched by
+      # steamcmd/srcds itself inside the container at boot, not over HTTP,
+      # so this provider has no per-mod install path). Picking a collection
+      # here just writes its id into CS2_HOST_WORKSHOP_COLLECTION below,
+      # which stays the manual escape hatch for anyone who already knows
+      # their collection id.
+      registry:
+        providers:
+          - provider: steam
+            steamAppID: 730 # Counter-Strike 2 (verified Steam appid).
+            modpacks:
+              refEnv: CS2_HOST_WORKSHOP_COLLECTION
 
   configSchema:
     - name: SRCDS_TOKEN
