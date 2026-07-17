@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
 # Gameplane GameTemplate for Palworld (dedicated server).
 #
 # Backed by the community thijsvanloef/palworld-server-docker image. The

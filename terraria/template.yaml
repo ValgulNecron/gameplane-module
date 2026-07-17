@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
 # Gameplane GameTemplate for Terraria (vanilla + tModLoader).
 #
 # Backed by passivelemon/terraria-docker. Vanilla vs tModLoader (and the

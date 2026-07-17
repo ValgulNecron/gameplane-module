@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
 # Gameplane GameTemplate for Project Zomboid (dedicated server).
 #
 # Backed by sknnr/zomboid-dedicated-server (https://github.com/jsknnr/project-

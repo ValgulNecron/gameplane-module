@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
 # Gameplane GameTemplate for Satisfactory (dedicated server).
 #
 # Backed by the community wolveix/satisfactory-server image, which installs

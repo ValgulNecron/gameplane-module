@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
 # Gameplane GameTemplate for ARK: Survival Ascended (dedicated server).
 #
 # Backed by mschnitzer/asa-linux-server

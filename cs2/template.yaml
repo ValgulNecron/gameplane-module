@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
 # Gameplane GameTemplate for Counter-Strike 2 (dedicated server).
 #
 # Backed by joedwards32/CS2 (cm2network/cs2 is a downstream mirror of the

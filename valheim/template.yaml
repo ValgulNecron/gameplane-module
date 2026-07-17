@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
 # Gameplane GameTemplate for Valheim (dedicated server).
 #
 # Backed by lloesche/valheim-server, which installs the game via SteamCMD on
