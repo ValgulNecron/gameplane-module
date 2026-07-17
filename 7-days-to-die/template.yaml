@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
 # Gameplane GameTemplate for 7 Days to Die (dedicated server).
 #
 # Backed by vinanrra/7dtd-server (https://github.com/vinanrra/Docker-7DaysToDie),

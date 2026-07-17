@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
 # Gameplane GameTemplate for DayZ (dedicated server).
 #
 # Backed by GodBleak/ServerZ (https://github.com/GodBleak/ServerZ), pulled

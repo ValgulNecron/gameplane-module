@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
 # Gameplane GameTemplate for Rust (dedicated server).
 #
 # Backed by didstopia/rust-server. Rust's RCON is WebSocket-only — Facepunch's
