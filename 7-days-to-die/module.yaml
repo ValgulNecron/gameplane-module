@@ -7,4 +7,4 @@ categories: [Survival, Horror, Co-op, Shooter]
 summary: 7 Days to Die dedicated server (vinanrra/7dtd-server) with persistent world saves and image-native mod installers. No RCON console or wizard server settings — this image spreads them across directories the operator can't all mount at once.
 homepage: https://7daystodie.com/
 license: MIT
-gameplaneMinVersion: 0.2.0
+gameplaneMinVersion: 0.2.0-beta.7

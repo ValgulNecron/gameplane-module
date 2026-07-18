@@ -7,4 +7,4 @@ categories: [Survival, Shooter, PvP, Horror]
 summary: DayZ dedicated server (GodBleak/ServerZ). No RCON is reachable (proprietary BattlEye RCon, not Source RCON) — manage via SIGTERM-safe restarts and config fields.
 homepage: https://dayz.com/
 license: MIT
-gameplaneMinVersion: 0.2.0
+gameplaneMinVersion: 0.2.0-beta.7

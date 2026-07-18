@@ -7,4 +7,4 @@ categories: [Simulation, Building, Sandbox, Co-op]
 summary: Satisfactory dedicated server (wolveix/satisfactory-server) with a stable/experimental branch picker. Env-configured; installs via steamcmd on first boot.
 homepage: https://www.satisfactorygame.com/
 license: MIT
-gameplaneMinVersion: 0.2.0
+gameplaneMinVersion: 0.2.0-beta.7

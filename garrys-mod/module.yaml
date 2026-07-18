@@ -7,4 +7,4 @@ categories: [Sandbox, Modded, Creative]
 summary: Garry's Mod dedicated server (ceifa/garrysmod) with Workshop addon collections via launch args. No RCON console or panel-managed addons — this image bakes them in.
 homepage: https://gmod.facepunch.com/
 license: MIT
-gameplaneMinVersion: 0.2.0
+gameplaneMinVersion: 0.2.0-beta.7

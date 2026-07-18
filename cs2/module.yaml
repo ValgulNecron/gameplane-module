@@ -7,4 +7,4 @@ categories: [Shooter, PvP]
 summary: Counter-Strike 2 dedicated server (joedwards32/CS2) with Source RCON and a Metamod/CS# plugins volume.
 homepage: https://www.counter-strike.net/cs2
 license: MIT
-gameplaneMinVersion: 0.2.0
+gameplaneMinVersion: 0.2.0-beta.7

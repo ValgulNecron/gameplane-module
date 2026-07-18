@@ -7,4 +7,4 @@ categories: [Survival, PvP, Co-op, Modded]
 summary: "ARK: Survival Ascended dedicated server (mschnitzer/asa-linux-server) with RCON console/moderation. CurseForge mods install via the game's own -mods= launch parameter."
 homepage: https://survivetheark.com/
 license: MIT
-gameplaneMinVersion: 0.2.0
+gameplaneMinVersion: 0.2.0-beta.7

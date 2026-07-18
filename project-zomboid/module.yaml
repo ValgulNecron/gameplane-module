@@ -7,4 +7,4 @@ categories: [Survival, Horror, Co-op]
 summary: Project Zomboid dedicated server (sknnr/zomboid-dedicated-server) with RCON console/moderation and Steam Workshop mods via the game's own MOD_IDS/MOD_NAMES sync.
 homepage: https://projectzomboid.com/
 license: MIT
-gameplaneMinVersion: 0.2.0
+gameplaneMinVersion: 0.2.0-beta.7

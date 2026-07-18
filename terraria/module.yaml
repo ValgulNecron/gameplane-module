@@ -7,4 +7,4 @@ categories: [Sandbox, Survival, Adventure, Modded]
 summary: Terraria + tModLoader dedicated server (passivelemon/terraria-docker) with a vanilla/tModLoader version picker and a tModLoader ModPacks volume. Console via container stdin.
 homepage: https://terraria.org/
 license: MIT
-gameplaneMinVersion: 0.2.0
+gameplaneMinVersion: 0.2.0-beta.7

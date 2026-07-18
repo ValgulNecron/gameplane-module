@@ -7,4 +7,4 @@ categories: [Survival, Co-op, Building]
 summary: Valheim dedicated server (lloesche/valheim-server) with a stable/public-test channel picker, a BepInEx mod volume, and in-app Thunderstore browse. Crossplay-friendly.
 homepage: https://www.valheimgame.com/
 license: MIT
-gameplaneMinVersion: 0.2.0
+gameplaneMinVersion: 0.2.0-beta.7
