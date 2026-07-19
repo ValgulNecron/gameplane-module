@@ -7,4 +7,4 @@ categories: [Sandbox, Survival, Building, Modded, Creative]
 summary: Vanilla / Paper / Spigot / Bukkit / Purpur / Forge / NeoForge / Fabric / Quilt servers (itzg/minecraft-server) with a version+loader picker spanning 1.16.5–latest, per-loader mod volumes, and in-app Modrinth browse.
 homepage: https://www.minecraft.net/
 license: MIT
-gameplaneMinVersion: 0.2.0-beta.7-beta.6
+gameplaneMinVersion: 0.2.0-beta.7
