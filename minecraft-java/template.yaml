@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
 # Gameplane GameTemplate for Minecraft: Java Edition.
 #
 # Backed by the community itzg/minecraft-server image, which downloads the
@@ -22,7 +23,7 @@ spec:
   displayName: Minecraft (Java Edition)
   game: minecraft-java
   # Kept in lockstep with module.yaml's bundle version from 2.5.0 onward.
-  version: 2.8.0
+  version: 2.8.1
   categories: [Sandbox, Survival, Building, Modded, Creative]
   # Brand color the dashboard tints this game's icon/accents with.
   accentColor: "#5b9a3e"
@@ -460,6 +461,9 @@ spec:
               env:
                 - { name: TYPE, value: MODRINTH }
           - provider: curseforge
+            # 432 is Minecraft's numeric CurseForge game id (verified
+            # against CurseForge's own /v1/games).
+            curseforgeGameID: 432
           - provider: hangar
 
   probes:

@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
 apiVersion: gameplane.local/v1alpha1
 kind: GameTemplate
 metadata:

@@ -1,0 +1,62 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Gameplane module manifest (module.yaml)",
+  "description": "The bundle metadata layer of a Gameplane module. See docs/module-authoring.md in the Gameplane repo for the authoritative format.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["apiVersion", "name", "displayName", "version", "game", "summary"],
+  "properties": {
+    "apiVersion": {
+      "const": "gameplane.local/module/v1"
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+      "maxLength": 63,
+      "description": "DNS-1123 label; must match the module directory name."
+    },
+    "displayName": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Human-readable name shown on the catalog card."
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\\+[0-9A-Za-z.-]+)?$",
+      "description": "Semver; must match the OCI tag the bundle is pushed under."
+    },
+    "game": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Free-form game family identifier (e.g. minecraft-java)."
+    },
+    "categories": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Catalog groupings; a module may belong to several."
+    },
+    "summary": {
+      "type": "string",
+      "minLength": 1,
+      "description": "One-line description for the catalog card."
+    },
+    "homepage": {
+      "type": "string",
+      "format": "uri",
+      "description": "Optional project/game homepage URL."
+    },
+    "license": {
+      "type": "string",
+      "description": "Optional SPDX license identifier."
+    },
+    "gameplaneMinVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$",
+      "description": "Optional minimum operator version; install is refused on older operators."
+    },
+    "icon": {
+      "type": "string",
+      "description": "Optional filename of the icon layer (e.g. icon.png)."
+    }
+  }
+}

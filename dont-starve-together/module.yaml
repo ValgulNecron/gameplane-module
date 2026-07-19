@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../.schema/module.schema.json
 apiVersion: gameplane.local/module/v1
 name: dont-starve-together
 displayName: Don't Starve Together

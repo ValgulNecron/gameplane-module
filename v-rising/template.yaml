@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
 # Gameplane GameTemplate for V Rising (dedicated server).
 #
 # Backed by trueosiris/vrising (Ubuntu + Wine). The image documents two

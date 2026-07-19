@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
 # Gameplane GameTemplate for Garry's Mod (dedicated server).
 #
 # Backed by ceifa/garrysmod (https://github.com/ceifa/garrysmod-docker). The

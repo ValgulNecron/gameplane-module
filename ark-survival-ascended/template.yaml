@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
 # Gameplane GameTemplate for ARK: Survival Ascended (dedicated server).
 #
 # Backed by mschnitzer/asa-linux-server
@@ -58,7 +59,7 @@ metadata:
 spec:
   displayName: "ARK: Survival Ascended"
   game: ark-survival-ascended
-  version: 1.0.7
+  version: 1.0.8
   categories: [Survival, PvP, Co-op, Modded]
   accentColor: "#00b2e2"
   description: |
@@ -194,6 +195,11 @@ spec:
       registry:
         providers:
           - provider: curseforge
+            # 83374 is ARK: Survival Ascended's numeric CurseForge game id
+            # (verified against CurseForge's own /v1/games) — NOT
+            # Minecraft's 432. Without this, the browser silently fell back
+            # to Minecraft's mods.
+            curseforgeGameID: 83374
 
   # NO PROBES — deliberately. ASA exposes no probeable TCP port:
   #   - game/peer are UDP, which the kubelet cannot probe

@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
 # Gameplane GameTemplate for Factorio (headless server).
 #
 # Backed by the official-community factoriotools/factorio image. The game
