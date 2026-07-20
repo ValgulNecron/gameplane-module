@@ -112,6 +112,25 @@ spec:
             type: int
             default: "12"
             required: true
+      - id: announce-restart
+        displayName: Announce restart
+        description: Warns players in chat with a countdown, saves, then restarts the server.
+        icon: rotate-ccw
+        group: Server
+        danger: true
+        confirm: true
+        command: 'restart {{.Params.seconds}} "{{.Params.message}}"'
+        params:
+          - name: seconds
+            displayName: Countdown (seconds)
+            type: int
+            default: "300"
+            required: true
+          - name: message
+            displayName: Message
+            type: string
+            default: "Server restarting"
+            required: true
     mods:
       loaders:
         oxide:

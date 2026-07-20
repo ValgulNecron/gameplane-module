@@ -177,6 +177,53 @@ spec:
         danger: true
         confirm: true
         command: "DestroyWildDinos"
+      - id: set-motd
+        displayName: Set message of the day
+        description: Message shown to players when they connect.
+        icon: message-square
+        group: Server
+        command: "SetMessageOfTheDay {{.Params.message}}"
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+      - id: set-game-speed
+        displayName: Set game speed
+        description: Time-passage multiplier — 1 is normal, 2 is double, 0.5 is half.
+        icon: gauge
+        group: World
+        command: "Slomo {{.Params.factor}}"
+        params:
+          - name: factor
+            displayName: Speed multiplier
+            type: string
+            default: "1"
+            required: true
+      - id: kick-player
+        displayName: Kick player
+        description: Disconnect a player by EOS ID (see ListPlayers). Not a ban.
+        icon: user-minus
+        group: Players
+        command: "KickPlayer {{.Params.eosid}}"
+        params:
+          - name: eosid
+            displayName: EOS ID
+            type: string
+            required: true
+      - id: ban-player
+        displayName: Ban player
+        description: Ban a player by EOS ID. Persistent until unbanned.
+        icon: ban
+        group: Players
+        danger: true
+        confirm: true
+        command: "BanPlayer {{.Params.eosid}}"
+        params:
+          - name: eosid
+            displayName: EOS ID
+            type: string
+            required: true
     mods:
       # ASA has no mods directory and no mods env — its only hook is a
       # -mods=<curseforge-id>,... flag on the launch string, which also

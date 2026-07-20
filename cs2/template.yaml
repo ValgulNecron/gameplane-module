@@ -142,6 +142,43 @@ spec:
         icon: clock
         group: World
         command: "mp_warmup_start"
+      - id: pause-match
+        displayName: Pause match
+        description: Pauses at the end of the current round.
+        icon: pause
+        group: World
+        command: "mp_pause_match"
+      - id: unpause-match
+        displayName: Unpause match
+        description: Resumes a paused match (or cancels a queued pause).
+        icon: play
+        group: World
+        command: "mp_unpause_match"
+      - id: end-warmup
+        displayName: End warmup
+        icon: flag
+        group: World
+        command: "mp_warmup_end"
+      - id: swap-teams
+        displayName: Swap teams
+        description: Switches CT and T sides and restarts the game (scores reset).
+        icon: repeat
+        group: World
+        danger: true
+        confirm: true
+        command: "mp_swapteams"
+      - id: add-bot
+        displayName: Add bot
+        description: Adds one bot to a team with an open slot.
+        icon: bot
+        group: Players
+        command: "bot_add"
+      - id: kick-bots
+        displayName: Kick bots
+        description: Removes bots from the server.
+        icon: user-minus
+        group: Players
+        command: "bot_kick"
     # No version/loader axis for CS2, so mods use the legacy single-path
     # form. Metamod stays at game/csgo/addons; CounterStrikeSharp nests one
     # level deeper (game/csgo/addons/counterstrikesharp/plugins) but is
