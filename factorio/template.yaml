@@ -121,6 +121,59 @@ spec:
         icon: save
         group: World
         command: "/save"
+      - id: kick-player
+        displayName: Kick player
+        description: Disconnect a player. They can reconnect.
+        icon: user-minus
+        group: Players
+        command: "/kick {{.Params.player}} {{.Params.reason}}"
+        params:
+          - name: player
+            displayName: Player name
+            type: string
+            required: true
+          - name: reason
+            displayName: Reason (optional)
+            type: string
+            required: false
+      - id: ban-player
+        displayName: Ban player
+        description: Ban a player; the reason is shown when they try to reconnect.
+        icon: ban
+        group: Players
+        danger: true
+        confirm: true
+        command: "/ban {{.Params.player}} {{.Params.reason}}"
+        params:
+          - name: player
+            displayName: Player name
+            type: string
+            required: true
+          - name: reason
+            displayName: Reason (optional)
+            type: string
+            required: false
+      - id: unban-player
+        displayName: Unban player
+        icon: user-plus
+        group: Players
+        command: "/unban {{.Params.player}}"
+        params:
+          - name: player
+            displayName: Player name
+            type: string
+            required: true
+      - id: mute-player
+        displayName: Mute player
+        description: Prevents a player from sending chat messages.
+        icon: mic-off
+        group: Players
+        command: "/mute {{.Params.player}}"
+        params:
+          - name: player
+            displayName: Player name
+            type: string
+            required: true
     # Factorio loads .zip mods straight from the mods dir (no extraction).
     # The in-app browser searches the official mod portal; downloads need
     # the player's own factorio.com credentials, so the panel hands off to

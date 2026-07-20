@@ -86,6 +86,29 @@ spec:
             type: int
             default: "1"
             required: true
+      - id: set-season
+        displayName: Set season
+        description: Change the current season.
+        icon: leaf
+        group: World
+        transport: stdin
+        command: 'TheWorld:PushEvent("ms_setseason", "{{.Params.season}}")'
+        params:
+          - name: season
+            displayName: Season
+            type: enum
+            enum: ["autumn", "winter", "spring", "summer"]
+            default: autumn
+            required: true
+      - id: regenerate-world
+        displayName: Regenerate world
+        description: Deletes the current world and generates a brand-new one. All progress is lost.
+        icon: refresh-cw
+        group: World
+        danger: true
+        confirm: true
+        transport: stdin
+        command: "c_regenerateworld()"
   configSchema:
     - name: DST_CLUSTER_TOKEN
       displayName: Cluster Token

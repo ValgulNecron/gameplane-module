@@ -407,6 +407,69 @@ spec:
             type: string
             default: "Server restarting shortly — please log out safely."
             required: true
+      - id: give-item
+        displayName: Give item
+        description: Grant an item to a player.
+        icon: gift
+        group: Players
+        command: "give {{.Params.player}} {{.Params.item}} {{.Params.count}}"
+        params:
+          - name: player
+            displayName: Player name
+            type: string
+            required: true
+          - name: item
+            displayName: Item ID (e.g. diamond, golden_apple)
+            type: string
+            required: true
+          - name: count
+            displayName: Quantity
+            type: int
+            default: "1"
+            required: true
+      - id: set-gamemode
+        displayName: Set player game mode
+        description: Change one player's game mode.
+        icon: gamepad-2
+        group: Players
+        command: "gamemode {{.Params.mode}} {{.Params.player}}"
+        params:
+          - name: mode
+            displayName: Game mode
+            type: enum
+            enum: ["survival", "creative", "adventure", "spectator"]
+            default: survival
+            required: true
+          - name: player
+            displayName: Player name
+            type: string
+            required: true
+      - id: toggle-daylight-cycle
+        displayName: Toggle daylight cycle
+        description: Freeze or resume the day/night cycle.
+        icon: sun
+        group: World
+        command: "gamerule doDaylightCycle {{.Params.value}}"
+        params:
+          - name: value
+            displayName: Daylight cycle
+            type: enum
+            enum: ["true", "false"]
+            default: "true"
+            required: true
+      - id: toggle-keep-inventory
+        displayName: Toggle keep inventory
+        description: Whether players keep their items on death.
+        icon: backpack
+        group: World
+        command: "gamerule keepInventory {{.Params.value}}"
+        params:
+          - name: value
+            displayName: Keep inventory
+            type: enum
+            enum: ["true", "false"]
+            default: "false"
+            required: true
     status:
       metrics:
         - id: seed

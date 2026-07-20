@@ -154,6 +154,32 @@ spec:
             displayName: Message
             type: string
             required: true
+      - id: kick-player
+        displayName: Kick player
+        description: Disconnect a player from the server.
+        icon: user-minus
+        group: Players
+        transport: stdin
+        command: "kick {{.Params.player}}"
+        params:
+          - name: player
+            displayName: Player name
+            type: string
+            required: true
+      - id: ban-player
+        displayName: Ban player
+        description: Disconnect and ban a player.
+        icon: ban
+        group: Players
+        danger: true
+        confirm: true
+        transport: stdin
+        command: "ban {{.Params.player}}"
+        params:
+          - name: player
+            displayName: Player name
+            type: string
+            required: true
     # tModLoader modpacks live under <config>/ModPacks; the active modpack is
     # picked with the MODPACK config field. Vanilla has no loaders entry, so
     # vanilla servers show no Mods tab.

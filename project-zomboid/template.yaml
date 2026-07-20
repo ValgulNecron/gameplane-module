@@ -166,6 +166,55 @@ spec:
         icon: siren
         group: World
         command: "alarm"
+      - id: kick-player
+        displayName: Kick player
+        description: Disconnect a player from the server.
+        icon: user-minus
+        group: Players
+        command: 'kickuser "{{.Params.player}}"'
+        params:
+          - name: player
+            displayName: Username
+            type: string
+            required: true
+      - id: ban-player
+        displayName: Ban player
+        description: Disconnect and ban a player.
+        icon: ban
+        group: Players
+        danger: true
+        confirm: true
+        command: 'banuser "{{.Params.player}}"'
+        params:
+          - name: player
+            displayName: Username
+            type: string
+            required: true
+      - id: unban-player
+        displayName: Unban player
+        icon: user-plus
+        group: Players
+        command: 'unbanuser "{{.Params.player}}"'
+        params:
+          - name: player
+            displayName: Username
+            type: string
+            required: true
+      - id: start-rain
+        displayName: Start rain
+        icon: cloud-rain
+        group: World
+        command: "startrain"
+      - id: stop-rain
+        displayName: Stop rain
+        icon: sun
+        group: World
+        command: "stoprain"
+      - id: start-storm
+        displayName: Start storm
+        icon: cloud-lightning
+        group: World
+        command: "startstorm"
 
   probes:
     # Game/direct ports are UDP; RCON is the only TCP port, so it's the

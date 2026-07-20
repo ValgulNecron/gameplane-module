@@ -111,10 +111,48 @@ spec:
       # BattlEye moderation is by player number, not name — the dashboard
       # passes what the list returned, so kick/ban are left unset rather
       # than shipping commands that would silently target the wrong player.
-    # No capabilities.actions either: BattlEye RCon's command set is too
-    # restricted, and a broadcast command ("say -1 <msg>") could not be
-    # verified for DayZ specifically (BE's "say" semantics vary by game).
-    # No actions rather than shipping buttons that may error.
+    # BattlEye RCon does support a small set of verified admin commands
+    # beyond the players list: a global broadcast ("say -1 <msg>", no "#"
+    # prefix) and a few "#"-prefixed server commands. kick-player below
+    # asks for the BattlEye player number explicitly (read from the
+    # players list above) rather than a name — the standard BE admin
+    # workflow, and different from the auto-name-passing this module
+    # declines for players.kick/ban above.
+    actions:
+      - id: broadcast
+        displayName: Broadcast message
+        description: Send a global message to all players.
+        icon: megaphone
+        group: Server
+        command: "say -1 {{.Params.message}}"
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+      - id: kick-player
+        displayName: Kick player
+        description: Kick a player by their BattlEye player number (from the players list).
+        icon: user-minus
+        group: Players
+        command: "#kick {{.Params.number}}"
+        params:
+          - name: number
+            displayName: Player number
+            type: int
+            required: true
+      - id: lock-server
+        displayName: Lock server
+        description: Stop new players from connecting (existing players stay).
+        icon: lock
+        group: Server
+        command: "#lock"
+      - id: unlock-server
+        displayName: Unlock server
+        description: Allow new connections again.
+        icon: lock-open
+        group: Server
+        command: "#unlock"
 
   # No console/probes block: the game's only ports are UDP (no TCP surface
   # to probe), and there is no HTTP endpoint either. Kubernetes falls back
