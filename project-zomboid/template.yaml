@@ -46,6 +46,18 @@ spec:
 
   image: sknnr/zomboid-dedicated-server:latest@sha256:bcb7e2486214b93ee125051e888c87cfbe3aa2654897d944a6254272b7b0ab74
 
+  versions:
+    - id: v1-1-1
+      displayName: "Image v1.1.1"
+      image: sknnr/zomboid-dedicated-server:v1.1.1@sha256:bcb7e2486214b93ee125051e888c87cfbe3aa2654897d944a6254272b7b0ab74
+      default: true
+    - id: v1-0-0
+      displayName: "Image v1.0.0"
+      image: sknnr/zomboid-dedicated-server:v1.0.0@sha256:e8f202e8203ff6a67f5fe78c9d2fdedd85f644421cbe18f2805845ba4b821b0a
+    - id: latest
+      displayName: "Latest (moves on restart)"
+      image: sknnr/zomboid-dedicated-server:latest  # gameplane:floating
+
   # REQUIRED. The image is rootless. Its README SAYS uid 1000 — that is WRONG;
   # the image's own /etc/passwd has `steam:x:10000:10000` and /home/steam is
   # owned by 10000:10000, so running as 1000 gets EACCES from SteamCMD

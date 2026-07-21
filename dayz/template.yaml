@@ -47,6 +47,15 @@ spec:
 
   image: registry.godbleak.dev/godbleak/serverz:latest@sha256:5e8757beae763c862d08a9c08587c35211cda74ce399f7419492d7520adab4fe
 
+  versions:
+    - id: 2-0-0
+      displayName: "Image 2.0.0"
+      image: registry.godbleak.dev/godbleak/serverz:2.0.0@sha256:5e8757beae763c862d08a9c08587c35211cda74ce399f7419492d7520adab4fe
+      default: true
+    - id: latest
+      displayName: "Latest (moves on restart)"
+      image: registry.godbleak.dev/godbleak/serverz:latest  # gameplane:floating
+
   env:
     # Fixed to match the declared ports[] below.
     - name: PORT

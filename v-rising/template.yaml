@@ -38,6 +38,21 @@ spec:
 
   image: trueosiris/vrising:latest@sha256:9356f98ad56139cccf4cfc7a62331d02e4216e8156d990792f5050252405bc7d
 
+  versions:
+    - id: 2026-04-23-1036
+      displayName: "Image 2026-04-23-1036"
+      image: trueosiris/vrising:2026-04-23-1036@sha256:9356f98ad56139cccf4cfc7a62331d02e4216e8156d990792f5050252405bc7d
+      default: true
+    - id: 3-0
+      displayName: "Image 3.0"
+      image: trueosiris/vrising:3.0@sha256:a58cb84e3d69acf2d965ec752ee3a13ce5d10eea1808b536762fbd7048af71c2
+    - id: 2-1
+      displayName: "Image 2.1"
+      image: trueosiris/vrising:2.1@sha256:22e4c7f6f7ec4bb3395bb840d40e823c5df381fc90f88914f5e56798539471e7
+    - id: latest
+      displayName: "Latest (moves on restart)"
+      image: trueosiris/vrising:latest  # gameplane:floating
+
   # Turns RCON on in ServerHostSettings.json via the image's generic
   # HOST_SETTINGS_ passthrough (double-underscore = nested JSON key). The
   # password itself is injected separately below via rcon.passwordEnv.

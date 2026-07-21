@@ -13,6 +13,19 @@ spec:
   accentColor: "#cc0000"
   description: DST dedicated server.
   image: jamesits/dst-server:latest@sha256:fa61065f8d2d770bc5d45f1a160b87b1deada3fd5903d9524b771321ca98dc58
+
+  versions:
+    - id: vanilla
+      displayName: "Vanilla"
+      image: jamesits/dst-server:vanilla@sha256:fa61065f8d2d770bc5d45f1a160b87b1deada3fd5903d9524b771321ca98dc58
+      default: true
+    - id: nightly
+      displayName: "Nightly (moving)"
+      image: jamesits/dst-server:nightly  # gameplane:floating
+    - id: latest
+      displayName: "Latest"
+      image: jamesits/dst-server:latest  # gameplane:floating
+
   ports:
     - name: game
       containerPort: 10999
