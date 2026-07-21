@@ -44,7 +44,7 @@ spec:
     RCON-backed console and moderation, Steam Workshop mods via the two
     ID lists Project Zomboid itself uses to sync content.
 
-  image: sknnr/zomboid-dedicated-server:latest
+  image: sknnr/zomboid-dedicated-server:latest@sha256:bcb7e2486214b93ee125051e888c87cfbe3aa2654897d944a6254272b7b0ab74
 
   # REQUIRED. The image is rootless. Its README SAYS uid 1000 — that is WRONG;
   # the image's own /etc/passwd has `steam:x:10000:10000` and /home/steam is

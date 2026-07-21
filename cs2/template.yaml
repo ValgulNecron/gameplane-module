@@ -32,7 +32,7 @@ spec:
     the console and the broadcast/stop actions; Metamod and
     CounterStrikeSharp plugins install under `game/csgo/addons`.
 
-  image: joedwards32/cs2:latest
+  image: joedwards32/cs2:latest@sha256:41b826d6280d1aa9e41c866a6d88cc7f523e027f16c47a313b20c2d7a17f2680
 
   # REQUIRED. The image config declares User "1000:1000" — it starts as a
   # non-root user with no root step to self-chown, so a fresh PVC is EACCES

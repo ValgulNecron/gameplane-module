@@ -56,7 +56,7 @@ spec:
     Gameplane's single data volume can't all cover at once, and world
     persistence was the fix this template needed.
 
-  image: vinanrra/7dtd-server:latest
+  image: vinanrra/7dtd-server:latest@sha256:e3c479866744a65c1bec2b1a4691e08baff2938cf674d4674cd9e8975cd21e4c
 
   env:
     # Required by the image — with no env at all (the previous draft's

@@ -68,7 +68,7 @@ spec:
     RCON-backed console and moderation. CurseForge mod management via the
     Mods tab.
 
-  image: mschnitzer/asa-linux-server:latest
+  image: mschnitzer/asa-linux-server:latest@sha256:6a62f7c6eb77ba4b4b79ef6c2981a0bd9fab287e744d9797e66efc762ebb811e
 
   # REQUIRED. The image declares no ENTRYPOINT and its CMD is /bin/bash, so
   # without this the container gets a non-interactive bash, which reads EOF

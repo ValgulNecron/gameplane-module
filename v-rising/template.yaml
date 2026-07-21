@@ -36,7 +36,7 @@ spec:
     [trueosiris/vrising](https://github.com/TrueOsiris/docker-vrising).
     Source RCON powers the console, broadcast, and stop actions.
 
-  image: trueosiris/vrising:latest
+  image: trueosiris/vrising:latest@sha256:9356f98ad56139cccf4cfc7a62331d02e4216e8156d990792f5050252405bc7d
 
   # Turns RCON on in ServerHostSettings.json via the image's generic
   # HOST_SETTINGS_ passthrough (double-underscore = nested JSON key). The

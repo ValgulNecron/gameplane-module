@@ -34,7 +34,7 @@ spec:
 
   # Fallback image when a server selects no version. versions[] below is the
   # authoritative source for the wizard's picker.
-  image: passivelemon/terraria-docker:terraria-latest
+  image: passivelemon/terraria-docker:terraria-latest@sha256:d60f280522d6c71079638b5036bdd6c4ac9f93c9f3250477ddb345fc2c6933f3
 
   ports:
     - name: game
@@ -67,23 +67,23 @@ spec:
   versions:
     - id: vanilla-latest
       displayName: "Vanilla · latest"
-      image: passivelemon/terraria-docker:terraria-latest
+      image: passivelemon/terraria-docker:terraria-latest@sha256:d60f280522d6c71079638b5036bdd6c4ac9f93c9f3250477ddb345fc2c6933f3
       loader: vanilla
       default: true
     - id: tmodloader-latest
       displayName: "tModLoader · latest"
-      image: passivelemon/terraria-docker:tmodloader-latest
+      image: passivelemon/terraria-docker:tmodloader-latest@sha256:3f2d8703421159f1037084bd2c0901a3a63b85a00801cf36f6f928e8b666b44e
       loader: tmodloader
     # Year channel: follows tModLoader's 2026.x stable line without jumping
     # to the next yearly major — steadier for servers with version-sensitive
     # mod sets than the plain latest tag.
     - id: tmodloader-2026
       displayName: "tModLoader · 2026 stable"
-      image: passivelemon/terraria-docker:tmodloader-2026
+      image: passivelemon/terraria-docker:tmodloader-2026@sha256:3f2d8703421159f1037084bd2c0901a3a63b85a00801cf36f6f928e8b666b44e
       loader: tmodloader
     - id: tmodloader-preview
       displayName: "tModLoader · latest preview"
-      image: passivelemon/terraria-docker:tmodloader-latest-pre
+      image: passivelemon/terraria-docker:tmodloader-latest-pre  # gameplane:floating
       loader: tmodloader
 
   probes:

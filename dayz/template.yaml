@@ -45,7 +45,7 @@ spec:
     BattlEye targets players by number rather than name, so a button would
     risk hitting the wrong one — moderate in-game instead.
 
-  image: registry.godbleak.dev/godbleak/serverz:latest
+  image: registry.godbleak.dev/godbleak/serverz:latest@sha256:5e8757beae763c862d08a9c08587c35211cda74ce399f7419492d7520adab4fe
 
   env:
     # Fixed to match the declared ports[] below.

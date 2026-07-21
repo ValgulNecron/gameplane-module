@@ -1084,6 +1084,15 @@ def validate_module(spec: dict, cache: dict[str, dict]) -> list[Finding]:
 # sequence dash, capturing any trailing comment so it survives the rewrite.
 _IMAGE_LINE_RE = re.compile(r"^(\s*(?:-\s+)?image:\s*)(\S+)(\s*(?:#.*)?)$")
 
+# Opt-out marker: an image line carrying this trailing comment is left
+# floating by pin mode. It exists because a module may deliberately offer a
+# moving channel the user picks by name -- factorio's "Experimental",
+# terraria's tmodloader pre-release -- and freezing those would defeat the
+# entry's whole purpose. A comment rather than a schema field keeps this
+# codegen-free: no CRD change, no regenerated manifests, and rule_images_pinned
+# already tolerates an unpinned non-default version entry.
+FLOATING_MARKER = "# gameplane:floating"
+
 
 def _unpinned(image_ref: str) -> str:
     """Strip any digest, leaving repo:tag — what a refresh must re-resolve.
@@ -1125,6 +1134,9 @@ def pin_templates(module_dirs: list[Path]) -> int:
                 out.append(line)
                 continue
             prefix, ref, suffix = m.groups()
+            if FLOATING_MARKER in suffix:
+                out.append(line)
+                continue
             target = _unpinned(ref.strip("\"'"))
 
             if target not in digest_cache:
