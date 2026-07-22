@@ -12,7 +12,23 @@ spec:
   categories: [Survival, Co-op, Building, Adventure]
   accentColor: "#2a4b7c"
   description: Enshrouded dedicated server.
-  image: mornedhels/enshrouded-server:latest
+  image: mornedhels/enshrouded-server:latest@sha256:85978a10f88a85ab0a0aa92e9821d30424895d38bf81fe543532451219c42d0d
+
+  versions:
+    - id: 1-7-2
+      displayName: "Game v1.7.2"
+      image: mornedhels/enshrouded-server:1.7.2@sha256:85978a10f88a85ab0a0aa92e9821d30424895d38bf81fe543532451219c42d0d
+      default: true
+    - id: 1-7-1
+      displayName: "Game v1.7.1"
+      image: mornedhels/enshrouded-server:1.7.1@sha256:67fe03f7a7b9932d269757604c97b85bbee125270c5cfc746d00dd21a2309ddc
+    - id: 1-7-0
+      displayName: "Game v1.7.0"
+      image: mornedhels/enshrouded-server:1.7.0@sha256:ca12415986fe84e585a2bd6cf5ba0a822a5c85c6caf1d557f5e607fdb2a84682
+    - id: latest
+      displayName: "Latest (moves on restart)"
+      image: mornedhels/enshrouded-server:latest  # gameplane:floating
+
   ports:
     - name: game
       containerPort: 15636

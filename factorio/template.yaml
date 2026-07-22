@@ -43,7 +43,7 @@ spec:
 
   # Fallback image when a server selects no version. versions[] below is the
   # authoritative source for the wizard's picker.
-  image: factoriotools/factorio:stable
+  image: factoriotools/factorio:stable@sha256:7052b3cca8ca7790f99f4058617d5c8089df544de736b1baa23f2c5f58fb7f48
 
   env:
     # Load the newest save on boot (the entrypoint generates one on first
@@ -91,16 +91,16 @@ spec:
   versions:
     - id: stable
       displayName: "Stable channel"
-      image: factoriotools/factorio:stable
+      image: factoriotools/factorio:stable@sha256:7052b3cca8ca7790f99f4058617d5c8089df544de736b1baa23f2c5f58fb7f48
       loader: native
       default: true
     - id: latest
       displayName: "Experimental channel"
-      image: factoriotools/factorio:latest
+      image: factoriotools/factorio:latest  # gameplane:floating
       loader: native
     - id: stable-2-0-77
       displayName: "2.0.77 (pinned stable)"
-      image: factoriotools/factorio:stable-2.0.77
+      image: factoriotools/factorio:stable-2.0.77@sha256:7052b3cca8ca7790f99f4058617d5c8089df544de736b1baa23f2c5f58fb7f48
       loader: native
       gameVersion: "2.0"
 

@@ -68,7 +68,25 @@ spec:
     RCON-backed console and moderation. CurseForge mod management via the
     Mods tab.
 
-  image: mschnitzer/asa-linux-server:latest
+  image: mschnitzer/asa-linux-server:latest@sha256:6a62f7c6eb77ba4b4b79ef6c2981a0bd9fab287e744d9797e66efc762ebb811e
+
+  versions:
+    - id: 1-5-1
+      displayName: "Image 1.5.1"
+      image: mschnitzer/asa-linux-server:1.5.1@sha256:6a62f7c6eb77ba4b4b79ef6c2981a0bd9fab287e744d9797e66efc762ebb811e
+      default: true
+    - id: 1-5-0
+      displayName: "Image 1.5.0"
+      image: mschnitzer/asa-linux-server:1.5.0@sha256:4b8df632b2070af60fddd6f77cc43f6397feed06ca7f29d80455e9b6ac2057d5
+    - id: 1-4-1
+      displayName: "Image 1.4.1"
+      image: mschnitzer/asa-linux-server:1.4.1@sha256:b2b7bad7b388853b7f152723f6dcbf0a40504beefb23568def85f61b56028cb9
+    - id: 1-4-0
+      displayName: "Image 1.4.0"
+      image: mschnitzer/asa-linux-server:1.4.0@sha256:c16a19aef7804e38ec4d6860f1ca038ccd83d606dd221877bccc862446eb8a85
+    - id: latest
+      displayName: "Latest (moves on restart)"
+      image: mschnitzer/asa-linux-server:latest  # gameplane:floating
 
   # REQUIRED. The image declares no ENTRYPOINT and its CMD is /bin/bash, so
   # without this the container gets a non-interactive bash, which reads EOF

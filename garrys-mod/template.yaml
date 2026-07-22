@@ -91,7 +91,7 @@ spec:
     `addons/`, `gamemodes/`, and `cfg/` into the image and only persists
     `garrysmod/data`).
 
-  image: ceifa/garrysmod:latest
+  image: ceifa/garrysmod:latest@sha256:26439fe29c2d66f4241a4db46e3c7088e9eb37356f2bd441dc0c3c86e8acb180
 
   env:
     # Debian production image variant (per the image's own recommendation

@@ -1,0 +1,109 @@
+name: refresh image pins
+
+# Every module's default image is pinned to a digest, so upstream releases no
+# longer reach users on their own. This workflow is how they reach users
+# deliberately: it re-resolves each pinned tag to whatever digest it points at
+# today and opens a PR with the diff.
+#
+# It NEVER pushes to main and NEVER auto-merges. A pin refresh means "the game
+# binary changes for everyone on next restart", which is exactly the event
+# pinning exists to put a human in front of. Review the PR, and let the
+# `validate modules` workflow re-check the new digests against their OCI
+# configs before merging.
+#
+# Entries tagged `# gameplane:floating` in a template are skipped by the
+# pinner and stay moving on purpose (factorio's Experimental channel,
+# terraria's tModLoader preview).
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 04:00 UTC on the 1st of each month. Monthly rather than nightly: these
+    # are game-server images, and a PR nobody has time to review is worse than
+    # no PR at all.
+    - cron: "0 4 1 * *"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: pip install --disable-pip-version-check --user pyyaml
+
+      - name: Re-resolve every pinned tag
+        id: pin
+        # `--pin` exits non-zero when a ref could not be resolved. It leaves
+        # those refs untouched rather than writing a guessed digest, so a
+        # partial refresh is still a safe diff — surface it in the PR body
+        # instead of failing the job outright.
+        run: |
+          set +e
+          python3 validate.py --pin | tee /tmp/pin.log
+          echo "exit=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Check for changes
+        id: diff
+        run: |
+          if git diff --quiet; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "No digest movement — every pinned tag still resolves to the same image."
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            git diff --stat
+          fi
+
+      - name: Re-validate the refreshed pins
+        if: steps.diff.outputs.changed == 'true'
+        # Non-blocking: the point is to attach the validator's opinion of the
+        # NEW images to the PR, not to stop the PR from being opened. A new
+        # upstream build that trips a rule is precisely what a reviewer needs
+        # to see.
+        continue-on-error: true
+        run: python3 validate.py | tee /tmp/validate.log
+
+      - name: Open a pull request
+        if: steps.diff.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # NOTE: a PR opened with the default GITHUB_TOKEN does not itself
+        # trigger other workflows, so `validate modules` will not run on it
+        # automatically. The validator output is attached to the PR body
+        # above; close and reopen the PR (or push an empty commit) to get a
+        # real CI run before merging.
+        run: |
+          BRANCH="chore/refresh-image-pins-$(date -u +%Y%m%d)"
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          # Two -m flags rather than one embedded newline: an unindented
+          # continuation line would terminate this YAML block scalar.
+          git commit -as \
+            -m "chore: refresh module image pins" \
+            -m "Re-resolved every pinned tag to its current digest. Review what actually moved before merging - each changed digest is a game binary that changes for every server on its next restart."
+          git push origin "$BRANCH"
+          {
+            echo "Automated pin refresh. **Each changed digest changes the game binary**"
+            echo "for every server using that module on its next pod restart."
+            echo
+            echo "## Pinner output"
+            echo '```'
+            cat /tmp/pin.log
+            echo '```'
+            echo "## Validator output for the new images"
+            echo '```'
+            cat /tmp/validate.log 2>/dev/null || echo "(validator did not run)"
+            echo '```'
+          } > /tmp/body.md
+          gh pr create --title "chore: refresh module image pins" \
+            --body-file /tmp/body.md --base main --head "$BRANCH"

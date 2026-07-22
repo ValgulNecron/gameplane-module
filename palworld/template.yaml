@@ -50,7 +50,7 @@ spec:
 
   # Fallback image when a server selects no version. versions[] below is the
   # authoritative source for the wizard's picker.
-  image: thijsvanloef/palworld-server-docker:latest
+  image: thijsvanloef/palworld-server-docker:latest@sha256:4145c58737fcd9f9f03d35de6bf33c0008b829b65d3080822bc46830bdb38fdf
 
   # REQUIRED. The image starts as root but its entrypoint DROPS privileges to
   # PUID/PGID (1000). The data PVC is root-owned, so the dropped-privilege
@@ -120,16 +120,16 @@ spec:
   versions:
     - id: latest
       displayName: "Latest wrapper"
-      image: thijsvanloef/palworld-server-docker:latest
+      image: thijsvanloef/palworld-server-docker:latest@sha256:4145c58737fcd9f9f03d35de6bf33c0008b829b65d3080822bc46830bdb38fdf
       loader: pak
       default: true
     - id: v2
       displayName: "v2 wrapper (major line)"
-      image: thijsvanloef/palworld-server-docker:v2
+      image: thijsvanloef/palworld-server-docker:v2@sha256:4145c58737fcd9f9f03d35de6bf33c0008b829b65d3080822bc46830bdb38fdf
       loader: pak
     - id: v2-4-1
       displayName: "v2.4.1 wrapper (pinned)"
-      image: thijsvanloef/palworld-server-docker:v2.4.1
+      image: thijsvanloef/palworld-server-docker:v2.4.1@sha256:ca18aa7ee82d4a0aaa52cbba4437633bf7cf3dda67bf570188c71d232374f6c3
       loader: pak
 
   capabilities:

@@ -92,6 +92,8 @@ never a spurious red build.
 from __future__ import annotations
 
 import json
+import os
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -188,16 +190,196 @@ def _curl_json(url: str, headers: dict[str, str] | None = None):
         return status, None, body
 
 
+def _curl_headers(url: str, headers: dict[str, str] | None = None) -> tuple[int | None, dict[str, str]]:
+    """Run curl and return (http_status_or_None, response_headers).
+
+    The body is discarded; only headers are read. `-L` means redirects can
+    produce several header blocks, so keys are overwritten as they arrive and
+    the LAST value for a name wins — that is the one belonging to the
+    response actually served. Header names are lower-cased (HTTP header
+    names are case-insensitive and registries disagree on casing).
+    """
+    cmd = [
+        "curl", "-s", "-L", "-4", "-m", str(CURL_TIMEOUT_SECS),
+        "-o", os.devnull, "-D", "-", "-w", "\n%{http_code}",
+    ]
+    for k, v in (headers or {}).items():
+        cmd += ["-H", f"{k}: {v}"]
+    cmd += [url]
+    try:
+        out = subprocess.run(
+            cmd, capture_output=True, timeout=CURL_TIMEOUT_SECS + 10, check=False
+        )
+    except (subprocess.TimeoutExpired, OSError):
+        return None, {}
+    if out.returncode != 0:
+        return None, {}
+    text = out.stdout.decode("utf-8", "replace")
+    idx = text.rfind("\n")
+    if idx == -1:
+        return None, {}
+    try:
+        status = int(text[idx + 1 :])
+    except ValueError:
+        return None, {}
+    parsed: dict[str, str] = {}
+    for line in text[:idx].splitlines():
+        if ":" not in line:
+            continue
+        name, _, value = line.partition(":")
+        parsed[name.strip().lower()] = value.strip()
+    return status, parsed
+
+
+def _parse_auth_challenge(header: str) -> dict[str, str]:
+    """Pull the key="value" pairs out of a `WWW-Authenticate: Bearer …` header."""
+    return dict(re.findall(r'(\w+)="([^"]*)"', header))
+
+
+def _registry_token(registry_host: str | None, repo: str) -> tuple[str | None, str, dict | None]:
+    """Get a pull token for repo, returning (token, api_base, error_or_None).
+
+    Docker Hub keeps its known-good hardcoded flow. Every other registry is
+    resolved through the standard OCI bearer challenge: request /v2/, read
+    the realm/service out of the 401's WWW-Authenticate header, and exchange
+    them for an anonymous pull token. That is not Docker-Hub-specific — it is
+    how the distribution spec says a client discovers auth — and it is what
+    lets the one module on a self-hosted registry (dayz, on a GitLab
+    container registry) be checked and pinned like every other.
+
+    A registry that requires real credentials returns no token; the caller
+    reports that as a skip, not a failure, since the validator has no
+    business holding registry credentials.
+    """
+    if registry_host is None:
+        api_base = "https://registry-1.docker.io"
+        token_url = (
+            f"https://auth.docker.io/token?service=registry.docker.io"
+            f"&scope=repository:{repo}:pull"
+        )
+    else:
+        api_base = f"https://{registry_host}"
+        status, headers = _curl_headers(f"{api_base}/v2/")
+        if status is None:
+            return None, api_base, {
+                "ok": False, "skipped": False, "network_error": True,
+                "reason": f"could not reach registry {registry_host!r}",
+            }
+        # An open registry answers /v2/ with 200 and needs no token at all.
+        if status == 200:
+            return "", api_base, None
+        challenge = headers.get("www-authenticate", "")
+        if not challenge.lower().startswith("bearer"):
+            return None, api_base, {
+                "ok": False, "skipped": True, "network_error": False,
+                "reason": (
+                    f"registry {registry_host!r} answered /v2/ with HTTP {status} and no "
+                    "bearer challenge — it needs credentials this validator does not hold; "
+                    "skipping (not a failure)"
+                ),
+            }
+        parts = _parse_auth_challenge(challenge)
+        realm = parts.get("realm")
+        if not realm:
+            return None, api_base, {
+                "ok": False, "skipped": True, "network_error": False,
+                "reason": f"registry {registry_host!r} sent a bearer challenge with no realm; skipping",
+            }
+        token_url = f"{realm}?service={parts.get('service', '')}&scope=repository:{repo}:pull"
+
+    status, body, raw = _curl_json(token_url)
+    if status is None:
+        return None, api_base, {
+            "ok": False, "skipped": False, "network_error": True,
+            "reason": f"could not reach the token endpoint ({raw[:200]!r})",
+        }
+    if status != 200 or not body:
+        return None, api_base, {
+            "ok": False, "skipped": False, "network_error": True,
+            "reason": f"token endpoint returned HTTP {status}",
+        }
+    # Docker Hub returns `token`; the OCI spec also allows `access_token`,
+    # which is what GitLab's registry returns.
+    token = body.get("token") or body.get("access_token")
+    if not token:
+        return None, api_base, {
+            "ok": False, "skipped": True, "network_error": False,
+            "reason": (
+                f"registry issued no anonymous pull token for {repo!r} — it likely "
+                "requires credentials; skipping (not a failure)"
+            ),
+        }
+    return token, api_base, None
+
+
+def resolve_digest(image_ref: str) -> dict[str, Any]:
+    """Resolve an image reference to the digest its tag currently points at.
+
+    Return shape mirrors fetch_image_config: {"ok": True, "digest": "sha256:…"}
+    or {"ok": False, "skipped": bool, "network_error": bool, "reason": str}.
+
+    This deliberately returns the digest of the TAG manifest — which for a
+    multi-arch image is the index (manifest-list) digest, covering every
+    platform the tag publishes. It must never be confused with the
+    per-platform digest fetch_image_config drills down to: pinning that
+    would silently reduce a module to a single architecture and break the
+    arm64 half of the e2e matrix.
+    """
+    registry_host, repo, reference = _parse_ref(image_ref)
+    token, api_base, err = _registry_token(registry_host, repo)
+    if err is not None:
+        return err
+
+    headers = {"Accept": MANIFEST_ACCEPT}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    status, resp_headers = _curl_headers(f"{api_base}/v2/{repo}/manifests/{reference}", headers)
+    if status is None:
+        return {
+            "ok": False, "skipped": False, "network_error": True,
+            "reason": f"could not reach {api_base} resolving {image_ref!r}",
+        }
+    if status == 404:
+        return {
+            "ok": False, "skipped": False, "network_error": False,
+            "reason": f"{image_ref}: HTTP 404 — repository or tag does not exist",
+        }
+    if status != 200:
+        return {
+            "ok": False, "skipped": False, "network_error": True,
+            "reason": f"registry returned HTTP {status} resolving {image_ref!r}",
+        }
+    digest = resp_headers.get("docker-content-digest")
+    if not digest:
+        return {
+            "ok": False, "skipped": False, "network_error": True,
+            "reason": (
+                f"{image_ref}: registry served the manifest without a "
+                "Docker-Content-Digest header, so there is nothing authoritative to pin to"
+            ),
+        }
+    return {"ok": True, "digest": digest}
+
+
 def _parse_ref(image_ref: str) -> tuple[str | None, str, str]:
-    """Split an image reference into (registry_host_or_None, repo, tag).
+    """Split an image reference into (registry_host_or_None, repo, reference).
 
     registry_host is None for Docker Hub (bare `user/repo` or official
-    `repo`, both normalized to Docker Hub's `library/` namespace).
+    `repo`, both normalized to Docker Hub's `library/` namespace). For any
+    other registry it is the bare host, and `repo` has that host stripped —
+    that is the form both the /v2/ URL path and the token scope take, so
+    leaving it on produces 404s on every request.
+
+    `reference` is whatever the registry accepts after /manifests/: a tag,
+    or a digest when the ref is pinned. Modules pin with the readable
+    `repo:tag@sha256:…` form, where the tag is decorative and the digest
+    wins; the tag must be dropped here or it stays glued to the repo path.
     """
     if "@" in image_ref:
-        # digest reference (repo@sha256:...) — not used by any module today,
-        # treat the whole thing after '@' as an opaque tag-equivalent.
         repo_part, tag = image_ref.split("@", 1)
+        # `repo:tag@sha256:…` — discard the decorative tag, keep the digest.
+        if ":" in repo_part.rsplit("/", 1)[-1]:
+            repo_part = repo_part.rsplit(":", 1)[0]
     elif ":" in image_ref.rsplit("/", 1)[-1]:
         repo_part, tag = image_ref.rsplit(":", 1)
     else:
@@ -206,7 +388,11 @@ def _parse_ref(image_ref: str) -> tuple[str | None, str, str]:
     first_segment = repo_part.split("/", 1)[0]
     is_custom_registry = "." in first_segment or ":" in first_segment or first_segment == "localhost"
     if is_custom_registry:
-        return first_segment, repo_part, tag
+        # A host with no repository path after it is not a usable reference;
+        # hand it back whole so the caller reports it rather than IndexError.
+        if "/" not in repo_part:
+            return first_segment, repo_part, tag
+        return first_segment, repo_part.split("/", 1)[1], tag
 
     if "/" not in repo_part:
         repo_part = f"library/{repo_part}"
@@ -222,54 +408,28 @@ def fetch_image_config(image_ref: str) -> dict[str, Any]:
       {"ok": False, "skipped": bool, "network_error": bool, "reason": str}
     """
     registry_host, repo, tag = _parse_ref(image_ref)
-    if registry_host is not None:
-        return {
-            "ok": False,
-            "skipped": True,
-            "network_error": False,
-            "reason": (
-                f"registry {registry_host!r} is not Docker Hub — this validator only "
-                "knows Docker Hub's anonymous token flow; skipping (not a failure)"
-            ),
-        }
+    token, api_base, err = _registry_token(registry_host, repo)
+    if err is not None:
+        return err
+    headers = {"Accept": MANIFEST_ACCEPT}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
 
-    token_url = (
-        f"https://auth.docker.io/token?service=registry.docker.io"
-        f"&scope=repository:{repo}:pull"
-    )
-    status, token_body, raw = _curl_json(token_url)
-    if status is None:
-        return {
-            "ok": False,
-            "skipped": False,
-            "network_error": True,
-            "reason": f"could not reach auth.docker.io ({raw[:200]!r})",
-        }
-    if status != 200 or not token_body or "token" not in token_body:
-        return {
-            "ok": False,
-            "skipped": False,
-            "network_error": True,
-            "reason": f"auth.docker.io returned HTTP {status}",
-        }
-    token = token_body["token"]
-    headers = {"Authorization": f"Bearer {token}", "Accept": MANIFEST_ACCEPT}
-
-    manifest_url = f"https://registry-1.docker.io/v2/{repo}/manifests/{tag}"
+    manifest_url = f"{api_base}/v2/{repo}/manifests/{tag}"
     status, manifest, raw = _curl_json(manifest_url, headers)
     if status is None:
         return {
             "ok": False,
             "skipped": False,
             "network_error": True,
-            "reason": f"could not reach registry-1.docker.io ({raw[:200]!r})",
+            "reason": f"could not reach {api_base} ({raw[:200]!r})",
         }
     if status == 404:
         return {
             "ok": False,
             "skipped": False,
             "network_error": False,
-            "reason": f"{image_ref}: HTTP 404 — repository or tag does not exist on Docker Hub",
+            "reason": f"{image_ref}: HTTP 404 — repository or tag does not exist",
         }
     if status != 200 or manifest is None:
         return {
@@ -297,14 +457,14 @@ def fetch_image_config(image_ref: str) -> dict[str, Any]:
             }
         digest = chosen["digest"]
         status, manifest, raw = _curl_json(
-            f"https://registry-1.docker.io/v2/{repo}/manifests/{digest}", headers
+            f"{api_base}/v2/{repo}/manifests/{digest}", headers
         )
         if status is None:
             return {
                 "ok": False,
                 "skipped": False,
                 "network_error": True,
-                "reason": f"could not reach registry-1.docker.io resolving platform manifest ({raw[:200]!r})",
+                "reason": f"could not reach {api_base} resolving platform manifest ({raw[:200]!r})",
             }
         if status != 200 or manifest is None:
             return {
@@ -323,16 +483,18 @@ def fetch_image_config(image_ref: str) -> dict[str, Any]:
             "network_error": False,
             "reason": f"{image_ref}: manifest has no config blob reference",
         }
+    blob_headers = {"Accept": "*/*"}
+    if token:
+        blob_headers["Authorization"] = f"Bearer {token}"
     status, config, raw = _curl_json(
-        f"https://registry-1.docker.io/v2/{repo}/blobs/{config_digest}",
-        {"Authorization": f"Bearer {token}", "Accept": "*/*"},
+        f"{api_base}/v2/{repo}/blobs/{config_digest}", blob_headers
     )
     if status is None:
         return {
             "ok": False,
             "skipped": False,
             "network_error": True,
-            "reason": f"could not reach registry-1.docker.io fetching the config blob ({raw[:200]!r})",
+            "reason": f"could not reach {api_base} fetching the config blob ({raw[:200]!r})",
         }
     if status != 200 or config is None:
         return {
@@ -624,6 +786,76 @@ def rule_image_exists(image_ref: str, result: dict) -> list[Finding]:
     return [Finding(ERROR, "image-not-found", result["reason"])]
 
 
+def rule_images_pinned(spec: dict) -> list[Finding]:
+    """Rule 10: whatever a user gets WITHOUT choosing must be pinned by digest.
+
+    A floating tag means a pod restart can swap the game binary under a live
+    world with no version bump and no changelog. This is not hypothetical:
+    `passivelemon/terraria-docker:terraria-latest` moved from Terraria 1.4.4.9
+    to 1.4.5.6, changed the network protocol, and broke the e2e Terraria bot.
+
+    The line this rule draws is between defaults and choices:
+
+    - ERROR on an unpinned `spec.image`, and on an unpinned version entry
+      marked `default: true`. Between them these are what a server runs when
+      the user expressed no preference, so they must be immutable.
+    - WARN on any other unpinned version entry. A module may legitimately
+      offer a moving channel (factorio's "Experimental", valheim's "Public
+      Test") — selecting one is the user's explicit, labelled choice, which
+      is exactly the escape hatch the roadmap asked for. The WARN keeps them
+      visible in CI output without blocking them.
+
+    This check is pure string inspection with no registry call, so a network
+    blip can never downgrade it to "couldn't verify" the way the
+    image-exists rules degrade.
+    """
+    findings: list[Finding] = []
+
+    def pinned(ref: str) -> bool:
+        return "@sha256:" in ref
+
+    image = spec.get("image")
+    if image and not pinned(image):
+        findings.append(
+            Finding(
+                ERROR,
+                "unpinned-default-image",
+                f"spec.image={image!r} floats. A server that selects no version runs "
+                "this image, so an upstream retag silently changes the game binary. "
+                "Pin it as repo:tag@sha256:… (run `python3 validate.py --pin`); keep a "
+                "moving tag only in a labelled spec.versions entry.",
+            )
+        )
+
+    for v in spec.get("versions") or []:
+        ref = v.get("image")
+        if not ref or pinned(ref):
+            continue
+        vid = v.get("id", "<no id>")
+        if v.get("default"):
+            findings.append(
+                Finding(
+                    ERROR,
+                    "unpinned-default-version",
+                    f"spec.versions[{vid}] is marked default: true but its image "
+                    f"{ref!r} floats — this is what a new server gets without the user "
+                    "choosing. Pin it (`python3 validate.py --pin`).",
+                )
+            )
+        else:
+            findings.append(
+                Finding(
+                    WARN,
+                    "unpinned-version-image",
+                    f"spec.versions[{vid}] image {ref!r} floats. That is allowed for a "
+                    "deliberately-moving channel the user picks by name; if this entry "
+                    "is meant to identify a specific build, pin it.",
+                )
+            )
+
+    return findings
+
+
 def rule_rcon_protocol(spec: dict) -> list[Finding]:
     """Rule 6: rcon.protocol must be one the agent actually implements."""
     rcon = spec.get("rcon")
@@ -840,7 +1072,109 @@ def validate_module(spec: dict, cache: dict[str, dict]) -> list[Finding]:
     findings += rule_rcon_protocol(spec)
     findings += rule_mods_loaders_requires_versions(spec)
     findings += rule_credential_fields_must_be_password(spec)
+    findings += rule_images_pinned(spec)
     return findings
+
+
+# --------------------------------------------------------------------------
+# Pin mode (`--pin`): rewrite every declared image to repo:tag@sha256:…
+# --------------------------------------------------------------------------
+
+# Matches a YAML `image:` value at any indent, with or without a leading
+# sequence dash, capturing any trailing comment so it survives the rewrite.
+_IMAGE_LINE_RE = re.compile(r"^(\s*(?:-\s+)?image:\s*)(\S+)(\s*(?:#.*)?)$")
+
+# Opt-out marker: an image line carrying this trailing comment is left
+# floating by pin mode. It exists because a module may deliberately offer a
+# moving channel the user picks by name -- factorio's "Experimental",
+# terraria's tmodloader pre-release -- and freezing those would defeat the
+# entry's whole purpose. A comment rather than a schema field keeps this
+# codegen-free: no CRD change, no regenerated manifests, and rule_images_pinned
+# already tolerates an unpinned non-default version entry.
+FLOATING_MARKER = "# gameplane:floating"
+
+
+def _unpinned(image_ref: str) -> str:
+    """Strip any digest, leaving repo:tag — what a refresh must re-resolve.
+
+    Resolving an already-pinned ref just returns the digest it already
+    carries, so re-pinning has to go back to the tag to pick up new upstream
+    builds. A ref pinned without a tag can only be refreshed as :latest,
+    which is why pin mode always writes the readable repo:tag@digest form.
+    """
+    if "@" not in image_ref:
+        return image_ref
+    repo_part = image_ref.split("@", 1)[0]
+    return repo_part if ":" in repo_part.rsplit("/", 1)[-1] else f"{repo_part}:latest"
+
+
+def pin_templates(module_dirs: list[Path]) -> int:
+    """Rewrite each template.yaml's image refs to pinned digests, in place.
+
+    Deliberately line-based rather than a YAML round-trip: these templates
+    carry substantial explanatory comments and deliberate formatting, and
+    yaml.safe_load + yaml.dump would silently discard all of it.
+    """
+    digest_cache: dict[str, dict] = {}
+    changed_files = 0
+    failures: list[str] = []
+
+    for module_dir in module_dirs:
+        template_path = module_dir / "template.yaml"
+        if not template_path.exists():
+            continue
+
+        lines = template_path.read_text().splitlines(keepends=True)
+        out: list[str] = []
+        edits: list[str] = []
+
+        for line in lines:
+            m = _IMAGE_LINE_RE.match(line.rstrip("\n"))
+            if not m:
+                out.append(line)
+                continue
+            prefix, ref, suffix = m.groups()
+            if FLOATING_MARKER in suffix:
+                out.append(line)
+                continue
+            target = _unpinned(ref.strip("\"'"))
+
+            if target not in digest_cache:
+                digest_cache[target] = resolve_digest(target)
+            result = digest_cache[target]
+
+            if not result.get("ok"):
+                failures.append(f"{module_dir.name}: {target} — {result['reason']}")
+                out.append(line)
+                continue
+
+            newref = f"{target}@{result['digest']}"
+            if newref == ref.strip("\"'"):
+                out.append(line)
+                continue
+            newline = f"{prefix}{newref}{suffix}"
+            out.append(newline + ("\n" if line.endswith("\n") else ""))
+            edits.append(f"    {ref}\n      -> {newref}")
+
+        if edits:
+            template_path.write_text("".join(out))
+            changed_files += 1
+            print(f"== {module_dir.name} == ({len(edits)} ref(s) pinned)")
+            for e in edits:
+                print(e)
+        else:
+            print(f"== {module_dir.name} == already pinned / no change")
+
+    print("\n---")
+    print(f"PIN SUMMARY: {changed_files} template(s) rewritten.")
+    if failures:
+        # A ref that could not be resolved is left exactly as it was, so a
+        # partial run never writes a half-pinned or invented digest.
+        print(f"{len(failures)} ref(s) could NOT be resolved and were left untouched:")
+        for f in failures:
+            print(f"  {f}")
+        return 1
+    return 0
 
 
 def discover_modules(root: Path, names: list[str] | None) -> list[Path]:
@@ -855,8 +1189,18 @@ def discover_modules(root: Path, names: list[str] | None) -> list[Path]:
 
 def main(argv: list[str]) -> int:
     root = Path(__file__).resolve().parent
-    names = argv[1:] or None
+    args = argv[1:]
+
+    # `--pin` is a maintenance/codegen mode, not a check: it rewrites the
+    # templates rather than reporting on them. Kept as a flag on this script
+    # (rather than a separate tool) so it shares one registry-access
+    # implementation with the rules that enforce its output.
+    pin_mode = "--pin" in args
+    names = [a for a in args if not a.startswith("-")] or None
     module_dirs = discover_modules(root, names)
+
+    if pin_mode:
+        return pin_templates(module_dirs)
 
     cache: dict[str, dict] = {}
     any_error = False
