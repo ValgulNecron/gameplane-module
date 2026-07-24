@@ -13,6 +13,10 @@
 #
 # Required: oras >= 1.2.0  (https://oras.land/docs/installation)
 # For --sign: cosign >= 2.0  (https://docs.sigstore.dev/cosign/installation)
+#   Signing stays on cosign's classic signature format
+#   (--new-bundle-format=false --use-signing-config=false) because that is what
+#   the operator's cosign/v2 verifier reads; the newer Rekor v2 flow also needs
+#   a timestamp authority that keyed signing cannot satisfy.
 
 set -euo pipefail
 
@@ -32,22 +36,39 @@ Flags:
   --plain-http       Use plain HTTP (for local kind registries)
   --insecure         Skip TLS verification
   --tag-latest       Also tag :latest in addition to module.yaml's version
-  --sign             cosign-sign each pushed bundle (keyed, offline; no Rekor)
+  --sign             cosign-sign each pushed bundle (keyed; offline by default)
+  --tlog-upload      With --sign, also record each signature in the public
+                     Rekor transparency log (for official published bundles)
 
 Reads each modules/<name>/module.yaml for the version. The bundle is
 pushed to <registry>/<name>:<version>.
 
 With --sign, set COSIGN_PRIVATE_KEY to the PEM private key (and
-COSIGN_PASSWORD if it is encrypted); each bundle is signed by digest with
-\`cosign sign --tlog-upload=false\`, which the operator verifies offline via
-ModuleSource.spec.verify.key. See docs/module-authoring.md.
+COSIGN_PASSWORD if it is encrypted); each bundle is signed by its manifest
+digest. By default signing is offline (\`--tlog-upload=false\`), which the
+operator verifies offline via ModuleSource.spec.verify.key — that keeps
+local/air-gapped authoring and the plain-HTTP e2e working without Sigstore
+connectivity. Add --tlog-upload for official bundles so the signature is
+publicly logged. See docs/module-authoring.md.
 USAGE
+}
+
+# parse_manifest_digest reads `oras push` output on stdin and prints the pushed
+# MANIFEST digest, anchoring on oras's authoritative "Digest: sha256:…" summary
+# line. Scanning the whole output for the first sha256 token would risk picking
+# up a LAYER digest and signing the wrong object. Kept as a function (and
+# reachable via the internal `_parse-digest` command) so it can be regression
+# tested without a registry — see test-build-sh.sh.
+parse_manifest_digest() {
+  sed -n 's/^[[:space:]]*Digest:[[:space:]]*\(sha256:[0-9a-f]\{64\}\).*/\1/p' | head -n1
 }
 
 cmd="${1:-}"
 shift || true
 case "$cmd" in
   push) ;;
+  # Internal, for tests: read oras output on stdin, print the manifest digest.
+  _parse-digest) parse_manifest_digest; exit 0 ;;
   ""|-h|--help) usage; exit 0 ;;
   *) echo "unknown command: $cmd" >&2; usage; exit 2 ;;
 esac
@@ -58,6 +79,7 @@ PLAIN_HTTP=""
 INSECURE=""
 TAG_LATEST=0
 SIGN=0
+TLOG_UPLOAD=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -67,6 +89,7 @@ while [[ $# -gt 0 ]]; do
     --insecure)   INSECURE=1;          shift ;;
     --tag-latest) TAG_LATEST=1;        shift ;;
     --sign)       SIGN=1;              shift ;;
+    --tlog-upload) TLOG_UPLOAD=1;      shift ;;
     -h|--help)    usage; exit 0 ;;
     *) echo "unknown flag: $1" >&2; usage; exit 2 ;;
   esac
@@ -77,6 +100,8 @@ command -v oras >/dev/null || { echo "oras not in PATH" >&2; exit 2; }
 if (( SIGN )); then
   command -v cosign >/dev/null || { echo "cosign not in PATH (required for --sign)" >&2; exit 2; }
   [[ -n "${COSIGN_PRIVATE_KEY:-}" ]] || { echo "--sign requires COSIGN_PRIVATE_KEY (PEM private key) in the environment" >&2; exit 2; }
+elif (( TLOG_UPLOAD )); then
+  echo "--tlog-upload has no effect without --sign" >&2; exit 2
 fi
 
 # Resolve modules dir from the script's location, so callers can run
@@ -132,13 +157,27 @@ push_one() {
 
   if (( SIGN )); then
     local digest
-    digest="$(printf '%s\n' "$out" | grep -oE 'sha256:[0-9a-f]{64}' | head -n1)"
-    [[ -n "$digest" ]] || { echo "$name: could not parse pushed digest from oras output" >&2; return 1; }
+    digest="$(printf '%s\n' "$out" | parse_manifest_digest)"
+    [[ -n "$digest" ]] || { echo "$name: could not parse pushed manifest digest from oras output" >&2; return 1; }
     echo ">> signing $REGISTRY/$name@$digest"
-    # Keyed + offline: no transparency-log upload, matching the operator's
-    # offline keyed verify path (IgnoreTlog/Offline). cosign reads the key
-    # from $COSIGN_PRIVATE_KEY and the passphrase from $COSIGN_PASSWORD.
-    local sargs=( sign --key env://COSIGN_PRIVATE_KEY --tlog-upload=false --yes )
+    # cosign reads the key from $COSIGN_PRIVATE_KEY and the passphrase from
+    # $COSIGN_PASSWORD. Two modes:
+    #   default        keyed + offline (--tlog-upload=false), matching the
+    #                  operator's offline keyed verify path (IgnoreTlog/Offline)
+    #                  — this is what local authors and the plain-HTTP e2e use.
+    #   --tlog-upload  also record the signature in the public Rekor
+    #                  transparency log, for official published bundles.
+    # --new-bundle-format=false --use-signing-config=false keep cosign on the
+    # classic signature/hashedrekord path in both modes: it is the format the
+    # operator's cosign/v2 verifier reads, and cosign's newer Rekor v2 flow
+    # additionally requires a TSA that keyed signing cannot satisfy.
+    local sargs=( sign --key env://COSIGN_PRIVATE_KEY --yes
+                  --new-bundle-format=false --use-signing-config=false )
+    if (( TLOG_UPLOAD )); then
+      echo ">> (recording signature in the public Rekor transparency log)"
+    else
+      sargs+=( --tlog-upload=false )
+    fi
     # --plain-http needs --allow-http-registry (force HTTP); --allow-insecure-
     # registry only skips TLS verification on an HTTPS connection, so against a
     # plain-HTTP registry it errors "server gave HTTP response to HTTPS client"
