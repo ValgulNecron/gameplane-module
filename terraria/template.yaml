@@ -41,6 +41,7 @@ spec:
       containerPort: 7777
       protocol: TCP
       advertise: true
+      wakeProtocol: terraria
 
   storage:
     size: 4Gi

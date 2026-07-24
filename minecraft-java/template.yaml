@@ -56,6 +56,7 @@ spec:
       containerPort: 25565
       protocol: TCP
       advertise: true
+      wakeProtocol: minecraft
     - name: rcon
       containerPort: 25575
       protocol: TCP
