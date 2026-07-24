@@ -38,3 +38,10 @@ jobs:
 
       - name: Run module preflight validator
         run: python3 validate.py
+
+      # build.sh's --sign path only ever executes in the release/republish
+      # workflows, so a mistake in the manifest-digest parser would sign the
+      # wrong object in production with nothing to catch it. These tests need
+      # no registry and no cosign.
+      - name: Test build.sh signing preconditions
+        run: ./test-build-sh.sh
