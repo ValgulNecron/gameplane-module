@@ -1,0 +1,222 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
+# Gameplane GameTemplate for Nuclear Option (dedicated server).
+#
+# Backed by a custom image shipping SteamCMD and entrypoint scripts. The game
+# server itself is installed/updated by steamcmd on boot (UPDATE_ON_BOOT), so
+# the FIRST start downloads ~900 MB — the startup probe budgets for that, and
+# the install output streams to the dashboard's Logs tab (source "pod").
+#
+# The image runs as non-root user gameserver (uid/gid 10000), so
+# spec.security.runAsUser is required and must match numerically. fsGroup
+# is also set so the non-root user can write the install into the mounted volume.
+#
+# Remote console is via the server's JSON-RPC-like remote-command protocol on
+# TCP 7779 (loopback-only, not exposed). The protocol supports commands to list
+# players, kick, ban, and set the next mission (note: set-next-mission takes
+# three arguments: Group, Name, MaxTime).
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/nuclear-option/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: nuclear-option
+  labels:
+    gameplane.local/module: nuclear-option
+spec:
+  displayName: Nuclear Option
+  game: nuclear-option
+  # Kept in lockstep with module.yaml's bundle version.
+  version: 1.0.0
+  categories: [Simulation, PvP]
+  # Brand color for the dashboard.
+  accentColor: "#ff6b6b"
+  description: |
+    Nuclear Option dedicated server with multiplayer tactical gameplay.
+    The server installs via steamcmd on first boot (~900 MB — give it a few
+    minutes). Remote console via the JSON-RPC-like remote-command protocol,
+    a graceful stop sequence, and live player list.
+
+  # Digest-pinned image; no version catalog needed for this game.
+  image: ghcr.io/valgulnecron/gameplane/nuclear-option@sha256:1be11d39fa12ba9a90b9a79b6c5c26e5abcaf51cab2453e2029d3ee95262e044
+
+  # REQUIRED. The image runs as non-root (uid/gid 10000), so spec.security.runAsUser
+  # must be set to match numerically. fsGroup ensures the non-root user can write
+  # to the mounted data volume — on first boot, SteamCMD installs the server into
+  # that volume, and without fsGroup the kubelet would leave it root-owned and
+  # unwritable to the dropped-privilege user.
+  security:
+    runAsUser: 10000
+    runAsGroup: 10000
+    fsGroup: 10000
+
+  ports:
+    - name: game
+      containerPort: 7778
+      protocol: UDP
+      advertise: true
+    - name: rcon
+      containerPort: 7779
+      protocol: TCP
+      # TCP 7779 binds to 127.0.0.1 only (loopback); never advertise it.
+      # The agent reaches it pod-local via the shared pod network namespace.
+      advertise: false
+
+  # The whole server install lives on the data volume (steamcmd target dir),
+  # so game files, config, logs, and mission files all persist together.
+  # Storage size: 891 MB install + ~100 MB logs + mission files + ban list.
+  storage:
+    size: 2Gi
+    mountPath: /data
+
+  resources:
+    # CPU and memory are unmeasured under load; these are reasonable game-server
+    # defaults. CPU mirrors similar-sized game servers (1-4 range); memory is
+    # conservative until telemetry from live servers informs a better estimate.
+    requests:
+      cpu: "1"
+      memory: 2Gi
+    limits:
+      cpu: "4"
+      memory: 8Gi
+
+  rcon:
+    protocol: nuclearoption
+    port: 7779
+    # No password authentication on the remote-command port; the server
+    # binds loopback-only (127.0.0.1:7779) so access is pod-local only.
+
+  # Field names match the DedicatedServerConfig.json structure exactly.
+  configSchema:
+    - name: SERVER_NAME
+      displayName: Server name
+      type: string
+      default: "A Gameplane Nuclear Option server"
+      required: true
+    - name: SERVER_PASSWORD
+      displayName: Server password
+      description: Required to join. Leave blank for an open server.
+      type: password
+      default: ""
+    - name: MAX_PLAYERS
+      displayName: Max players
+      description: Maximum concurrent players. Default observed is 16 (server-enforced limit not verified).
+      type: int
+      default: "16"
+      min: 1
+      max: 32
+    - name: MISSION_ROTATION
+      displayName: Mission rotation type
+      description: |
+        Rotation mode: 0 or 1 (exact semantics not verified in official docs; 0 appears to be sequential).
+      type: enum
+      enum: ["0", "1"]
+      default: "0"
+
+  # Render the config file from the resolved config values.
+  configFiles:
+    - path: DedicatedServerConfig.json
+      template: |
+        {
+          "MissionDirectory": "/data/NuclearOption-Missions",
+          "ModdedServer": false,
+          "Hidden": false,
+          "ServerName": {{printf "%q" .Values.SERVER_NAME}},
+          "Port": { "IsOverride": false, "Value": 0 },
+          "QueryPort": { "IsOverride": false, "Value": 0 },
+          "Password": {{printf "%q" .Values.SERVER_PASSWORD}},
+          "MaxPlayers": {{ .Values.MAX_PLAYERS }},
+          "BanListPaths": ["ban_list.txt"],
+          "DisableErrorKick": false,
+          "ErrorKickImmuneListPaths": [],
+          "NoPlayerStopTime": 30.0,
+          "PostMissionDelay": 30.0,
+          "RotationType": {{ .Values.MISSION_ROTATION }},
+          "MissionRotation": [
+            { "Key": { "Group": "BuiltIn", "Name": "Escalation" }, "MaxTime": 7200.0 },
+            { "Key": { "Group": "BuiltIn", "Name": "Terminal Control" }, "MaxTime": 7200.0 }
+          ],
+          "VoteKick": {
+            "Enabled": true,
+            "PassRatio": 0.6,
+            "MinVotes": 3,
+            "AutoBanThreshold": 3,
+            "VoteDuration": 45.0,
+            "ResolutionDisplayTime": 20.0,
+            "NewVoteLockout": 10.0,
+            "RequesterCooldown": 300.0
+          }
+        }
+
+  # Tell the entrypoint where to find the config file.
+  env:
+    - name: UPDATE_ON_BOOT
+      value: "true"
+    - name: REMOTE_COMMANDS_ENABLED
+      value: "true"
+    - name: DEDICATED_SERVER_CONFIG
+      value: /data/DedicatedServerConfig.json
+
+  capabilities:
+    players:
+      # The remote-command protocol returns {"Players": [...]} on get-player-list,
+      # with per-entry fields {"steamId": "...", "faction": "..."}.
+      # Capture Steam IDs; display names are hydrated server-side via Steam Web API.
+      list:
+        command: "get-player-list"
+        entryRegex: '"steamId":\s*"(?P<name>[^"]*)"'
+      kick:
+        command: "kick-player {{.Player}}"
+      ban:
+        command: "banlist-add {{.Player}}"
+      unban:
+        command: "banlist-remove {{.Player}}"
+      # Note: the server returns 2000 (success) for kick/ban/unban even when
+      # the Steam ID is not present, so the agent cannot distinguish a
+      # successful moderation from a silent no-op.
+
+    lifecycle:
+      # The server's 20 registered commands do not include a shutdown/stop/quit/exit
+      # command. The image runs the game as PID 1 so SIGTERM reaches it directly;
+      # rely on the graceful shutdown sequence built into the game itself.
+
+    actions:
+      - id: broadcast
+        displayName: Broadcast message
+        description: Send a message to all players.
+        icon: megaphone
+        group: Server
+        command: "send-chat-message {{.Params.message}}"
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+
+  probes:
+    # First boot = ~900 MB steamcmd download before the server reaches readiness,
+    # so the startup probe budgets ~20 minutes. The remote-command port (TCP 7779)
+    # is the only reliable liveness signal (game traffic is UDP).
+    #
+    # CRITICAL: tcpSocket probes cannot be used because the server binds
+    # 127.0.0.1:7779 only (loopback). Kubelet runs tcpSocket probes from the
+    # node against the pod IP, not from inside the pod, so the probe would
+    # always fail and the container would be killed before reaching Ready.
+    # Use exec probes from inside the pod instead.
+    startup:
+      exec:
+        command: ["timeout", "2", "nc", "-z", "127.0.0.1", "7779"]
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      failureThreshold: 80
+    readiness:
+      exec:
+        command: ["timeout", "2", "nc", "-z", "127.0.0.1", "7779"]
+      periodSeconds: 10
+      failureThreshold: 6
+    liveness:
+      exec:
+        command: ["timeout", "2", "nc", "-z", "127.0.0.1", "7779"]
+      periodSeconds: 30
+      failureThreshold: 5

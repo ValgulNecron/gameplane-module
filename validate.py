@@ -126,7 +126,7 @@ CURL_TIMEOUT_SECS = 15
 # the GameTemplate CRD's rcon.protocol enum and agent/internal/rcon/. A protocol
 # listed here but not implemented lets a module ship a console that never
 # connects, so this list is deliberately conservative.
-RCON_PROTOCOLS = ("source", "telnet", "websocket", "battleye", "satisfactory", "palworld", "none")
+RCON_PROTOCOLS = ("source", "telnet", "websocket", "battleye", "satisfactory", "palworld", "nuclearoption", "none")
 
 
 
