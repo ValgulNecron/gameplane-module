@@ -1,0 +1,27 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: left-4-dead-2-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: left-4-dead-2
+
+  config:
+    SERVER_HOSTNAME: "Gameplane Left 4 Dead 2 Server"
+    SERVER_PASSWORD: ""
+    RCON_PASSWORD: "secret-rcon-password"
+    SERVER_START_MAP: "c1m1_hotel"
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 32015
+
+  storage:
+    size: 15Gi
+
+  resources:
+    requests: { cpu: 1, memory: 2Gi }
+    limits:   { cpu: 4, memory: 4Gi }

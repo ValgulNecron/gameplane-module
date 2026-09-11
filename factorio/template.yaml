@@ -51,6 +51,9 @@ spec:
     - name: LOAD_LATEST_SAVE
       value: "true"
 
+  security:
+    fsGroup: 845
+
   ports:
     - name: game
       containerPort: 34197
@@ -105,6 +108,8 @@ spec:
       gameVersion: "2.0"
 
   capabilities:
+    lifecycle:
+      stop: ["/server-save"]
     players:
       list:
         command: "/players online"

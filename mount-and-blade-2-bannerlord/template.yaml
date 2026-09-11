@@ -1,0 +1,83 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
+# Gameplane GameTemplate for Mount & Blade II: Bannerlord (dedicated server).
+#
+# Runs match-based skirmish, captain, and siege sessions. Console access is
+# driven via container PTY stdin/stdout.
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/mount-and-blade-2-bannerlord/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: mount-and-blade-2-bannerlord
+  labels:
+    gameplane.local/module: mount-and-blade-2-bannerlord
+spec:
+  displayName: "Mount & Blade II: Bannerlord"
+  game: mount-and-blade-2-bannerlord
+  version: 1.0.0
+  categories: [Action, RPG, Medieval, Multiplayer]
+  accentColor: "#b45309"
+  description: |
+    Mount & Blade II: Bannerlord dedicated multiplayer server. Supports
+    skirmish, battle, and siege match hosting. Interactive console connects
+    via container PTY stdin/stdout.
+
+  image: ghcr.io/valgulnecron/gameplane/mount-and-blade-2-bannerlord:latest@sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+  env:
+    - name: HOME
+      value: /serverdata
+
+  security:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  ports:
+    - name: game
+      containerPort: 7210
+      protocol: UDP
+      advertise: true
+    - name: query
+      containerPort: 7211
+      protocol: UDP
+      advertise: true
+
+  storage:
+    size: 20Gi
+    mountPath: /serverdata
+
+  resources:
+    requests: {cpu: "2", memory: 4Gi}
+    limits: {cpu: "4", memory: 8Gi}
+
+  rcon:
+    protocol: none
+
+  consoleMode: pty
+
+  capabilities:
+    lifecycle:
+      stop: []
+
+  configSchema:
+    - name: SERVER_NAME
+      displayName: Server Name
+      type: string
+      default: "Gameplane Bannerlord Server"
+    - name: SERVER_TOKEN
+      displayName: Server Token
+      description: Dedicated server token generated in-game via customserver.gettoken.
+      type: password
+      default: ""
+    - name: GAME_TYPE
+      displayName: Game Type
+      description: Multiplayer game mode (TeamDeathmatch, Siege, Battle, Skirmish).
+      type: string
+      default: "TeamDeathmatch"
+    - name: MAX_PLAYERS
+      displayName: Max Players
+      type: int
+      default: 64

@@ -402,6 +402,11 @@
                             ],
                             "type": "object"
                           },
+                          "curseforgeGameID": {
+                            "description": "CurseForgeGameID is the numeric CurseForge game the browser searches\n(Minecraft is 432; ARK: Survival Ascended is 83374 \u2014 from CurseForge's\nown /v1/games). Required when provider is curseforge: the API has no\nsafe default, and guessing one is how ARK's browser ended up listing\nMinecraft mods.",
+                            "format": "int32",
+                            "type": "integer"
+                          },
                           "github": {
                             "description": "GitHub binds this provider to one repository's Releases. GitHub has\nno cross-repo mod search (unlike Thunderstore's per-community\nindex), so a template picks exactly one repo to browse. Required\nwhen Provider is \"github\"; ignored otherwise.",
                             "properties": {
@@ -455,7 +460,7 @@
                                           "description": "Selects a key of a ConfigMap.",
                                           "properties": {
                                             "key": {
-                                              "description": "The key to select.",
+                                              "description": "The key to select from the ConfigMap's Data field.\nKeys in the BinaryData field are not currently propagated to container env vars.",
                                               "type": "string"
                                             },
                                             "name": {
@@ -596,7 +601,7 @@
                             "type": "object"
                           },
                           "provider": {
-                            "description": "Provider names the built-in registry engine: \"modrinth\" (Minecraft\nmods/plugins, keyless), \"thunderstore\" (BepInEx games, keyless,\nper-community), \"curseforge\" (Minecraft mods/modpacks, needs an API\nkey), \"hangar\" (PaperMC plugins, keyless), \"factorio\" (the official\nFactorio mod portal; browse is keyless, downloads need the player's\nown factorio.com credentials so installs hand off to the from-URL\nform), \"steam\" (Steam Workshop browse, needs a Steam Web API key;\nsee SteamAppID \u2014 Workshop content has no download URL, so it's a\npreview-only browser wired to modpacks.refEnv for collection-based\ngames like Garry's Mod/CS2), \"nexus\" (Nexus Mods, needs an API key,\nbrowse-only for the same reason as steam \u2014 see Community for its\nper-game domain slug), \"spigot\" (SpigotMC plugins via the Spiget API,\nkeyless), \"github\" (one repository's Releases stand in for\nversions, keyless but rate-limited \u2014 see GitHub), or \"umod\"\n(Rust/Hurtworld/7 Days to Die's Oxide/uMod plugin ecosystem,\nkeyless).",
+                            "description": "Provider names the built-in registry engine: \"modrinth\" (Minecraft\nmods/plugins, keyless), \"thunderstore\" (BepInEx games, keyless,\nper-community), \"curseforge\" (mods/modpacks for the game identified\nby CurseForgeGameID, needs an API key), \"hangar\" (PaperMC plugins,\nkeyless), \"factorio\" (the official Factorio mod portal; browse is\nkeyless, downloads need the player's own factorio.com credentials so\ninstalls hand off to the from-URL form), \"steam\" (Steam Workshop\nbrowse, needs a Steam Web API key; see SteamAppID \u2014 Workshop content\nhas no download URL, so it's a preview-only browser wired to\nmodpacks.refEnv for collection-based games like Garry's Mod/CS2),\n\"nexus\" (Nexus Mods, needs an API key, browse-only for the same\nreason as steam \u2014 see Community for its per-game domain slug),\n\"spigot\" (SpigotMC plugins via the Spiget API, keyless), \"github\"\n(one repository's Releases stand in for versions, keyless but\nrate-limited \u2014 see GitHub), or \"umod\" (Rust/Hurtworld/7 Days to\nDie's Oxide/uMod plugin ecosystem, keyless).",
                             "enum": [
                               "modrinth",
                               "thunderstore",
@@ -630,6 +635,10 @@
                           {
                             "message": "github is required when provider is github",
                             "rule": "self.provider != 'github' || has(self.github)"
+                          },
+                          {
+                            "message": "curseforgeGameID is required when provider is curseforge",
+                            "rule": "self.provider != 'curseforge' || (has(self.curseforgeGameID) && self.curseforgeGameID > 0)"
                           }
                         ]
                       },
@@ -912,6 +921,26 @@
                 },
                 "type": "array"
               },
+              "max": {
+                "description": "Max is the maximum numeric value for int-typed fields. Bounds are\ninclusive. Ignored for non-int field types.",
+                "format": "int64",
+                "type": "integer"
+              },
+              "maxLength": {
+                "description": "MaxLength is the maximum string length for string and password-typed\nfields. Bounds are inclusive. Ignored for non-string field types.",
+                "format": "int32",
+                "type": "integer"
+              },
+              "min": {
+                "description": "Min is the minimum numeric value for int-typed fields. Bounds are\ninclusive. Ignored for non-int field types.",
+                "format": "int64",
+                "type": "integer"
+              },
+              "minLength": {
+                "description": "MinLength is the minimum string length for string and password-typed\nfields. Bounds are inclusive. Ignored for non-string field types.",
+                "format": "int32",
+                "type": "integer"
+              },
               "name": {
                 "description": "Name is the field identifier (also used as an env var when\nTarget is \"env\").",
                 "minLength": 1,
@@ -989,7 +1018,7 @@
                     "description": "Selects a key of a ConfigMap.",
                     "properties": {
                       "key": {
-                        "description": "The key to select.",
+                        "description": "The key to select from the ConfigMap's Data field.\nKeys in the BinaryData field are not currently propagated to container env vars.",
                         "type": "string"
                       },
                       "name": {
@@ -1168,6 +1197,17 @@
                   "UDP"
                 ],
                 "type": "string"
+              },
+              "wakeProtocol": {
+                "default": "generic",
+                "description": "WakeProtocol selects the parser the wake sentinel applies to this port\nwhile the server is asleep. \"minecraft\" and \"terraria\" parse the real\nhandshake, so only a genuine join wakes the server and a server-list\nping is answered in place without waking it. \"generic\" wakes on\nplausible traffic \u2014 the only option for the UDP-only games, which have\nno connection to hold. \"none\" never wakes.",
+                "enum": [
+                  "minecraft",
+                  "terraria",
+                  "generic",
+                  "none"
+                ],
+                "type": "string"
               }
             },
             "required": [
@@ -1206,6 +1246,10 @@
                 "grpc": {
                   "description": "GRPC specifies a GRPC HealthCheckRequest.",
                   "properties": {
+                    "mode": {
+                      "description": "mode specifies the connection mode for the gRPC health probe.\nSet to \"TLS\" to use TLS without certificate verification.\nSet to \"Plaintext\" to use a plaintext (insecure) connection explicitly.\nIf not specified, the probe uses a plaintext (insecure) connection.",
+                      "type": "string"
+                    },
                     "port": {
                       "description": "Port number of the gRPC service. Number must be in the range 1 to 65535.",
                       "format": "int32",
@@ -1267,6 +1311,10 @@
                       ],
                       "description": "Name or number of the port to access on the container.\nNumber must be in the range 1 to 65535.\nName must be an IANA_SVC_NAME.",
                       "x-kubernetes-int-or-string": true
+                    },
+                    "protocol": {
+                      "description": "Protocol selects the wire protocol for the probe connection.\nNil defaults to HTTP/1.1.",
+                      "type": "string"
                     },
                     "scheme": {
                       "description": "Scheme to use for connecting to the host.\nDefaults to HTTP.",
@@ -1356,6 +1404,10 @@
                 "grpc": {
                   "description": "GRPC specifies a GRPC HealthCheckRequest.",
                   "properties": {
+                    "mode": {
+                      "description": "mode specifies the connection mode for the gRPC health probe.\nSet to \"TLS\" to use TLS without certificate verification.\nSet to \"Plaintext\" to use a plaintext (insecure) connection explicitly.\nIf not specified, the probe uses a plaintext (insecure) connection.",
+                      "type": "string"
+                    },
                     "port": {
                       "description": "Port number of the gRPC service. Number must be in the range 1 to 65535.",
                       "format": "int32",
@@ -1417,6 +1469,10 @@
                       ],
                       "description": "Name or number of the port to access on the container.\nNumber must be in the range 1 to 65535.\nName must be an IANA_SVC_NAME.",
                       "x-kubernetes-int-or-string": true
+                    },
+                    "protocol": {
+                      "description": "Protocol selects the wire protocol for the probe connection.\nNil defaults to HTTP/1.1.",
+                      "type": "string"
                     },
                     "scheme": {
                       "description": "Scheme to use for connecting to the host.\nDefaults to HTTP.",
@@ -1506,6 +1562,10 @@
                 "grpc": {
                   "description": "GRPC specifies a GRPC HealthCheckRequest.",
                   "properties": {
+                    "mode": {
+                      "description": "mode specifies the connection mode for the gRPC health probe.\nSet to \"TLS\" to use TLS without certificate verification.\nSet to \"Plaintext\" to use a plaintext (insecure) connection explicitly.\nIf not specified, the probe uses a plaintext (insecure) connection.",
+                      "type": "string"
+                    },
                     "port": {
                       "description": "Port number of the gRPC service. Number must be in the range 1 to 65535.",
                       "format": "int32",
@@ -1567,6 +1627,10 @@
                       ],
                       "description": "Name or number of the port to access on the container.\nNumber must be in the range 1 to 65535.\nName must be an IANA_SVC_NAME.",
                       "x-kubernetes-int-or-string": true
+                    },
+                    "protocol": {
+                      "description": "Protocol selects the wire protocol for the probe connection.\nNil defaults to HTTP/1.1.",
+                      "type": "string"
                     },
                     "scheme": {
                       "description": "Scheme to use for connecting to the host.\nDefaults to HTTP.",
@@ -1672,7 +1736,7 @@
             },
             "protocol": {
               "default": "source",
-              "description": "Protocol is the wire protocol the agent speaks to the game's console\nport. Multiple protocols are supported: \"source\" is the Valve/Minecraft\npacket-framed RCON protocol; \"telnet\" is a raw line-based TCP console\n(e.g. 7 Days to Die) \u2014 send a line, get a line back, no framing;\n\"websocket\" is the Rust WebRcon protocol (requires +rcon.web 1);\n\"battleye\" is the BattlEye RCon protocol used by DayZ and Arma \u2014 UDP,\nwith checksum-framed packets and a mandatory client-side keepalive;\n\"satisfactory\" is Satisfactory Dedicated Server's HTTPS function-call\nAPI (POST /api/v1 with a JSON \"function\" body, bearer-token auth\nafter a PasswordLogin call) \u2014 not a socket protocol at all, so Port\nhere is a TCP port carrying HTTPS, not a raw console stream.\n\"palworld\" is Palworld Dedicated Server's REST admin API (plain HTTP,\nnot HTTPS \u2014 GET/POST under /v1/api/..., HTTP Basic auth with\nusername \"admin\" sent on every request, no token or session) \u2014 the\nofficial replacement for Palworld's now-deprecated source RCON, and\nlikewise not a socket protocol, so Port is a TCP port carrying HTTP.\n\"none\" means the game has no usable remote console (see consoleMode:\npty for stdin-driven games instead).",
+              "description": "Protocol is the wire protocol the agent speaks to the game's console\nport. Multiple protocols are supported: \"source\" is the Valve/Minecraft\npacket-framed RCON protocol; \"telnet\" is a raw line-based TCP console\n(e.g. 7 Days to Die) \u2014 send a line, get a line back, no framing;\n\"websocket\" is the Rust WebRcon protocol (requires +rcon.web 1);\n\"battleye\" is the BattlEye RCon protocol used by DayZ and Arma \u2014 UDP,\nwith checksum-framed packets and a mandatory client-side keepalive;\n\"satisfactory\" is Satisfactory Dedicated Server's HTTPS function-call\nAPI (POST /api/v1 with a JSON \"function\" body, bearer-token auth\nafter a PasswordLogin call) \u2014 not a socket protocol at all, so Port\nhere is a TCP port carrying HTTPS, not a raw console stream.\n\"palworld\" is Palworld Dedicated Server's REST admin API (plain HTTP,\nnot HTTPS \u2014 GET/POST under /v1/api/..., HTTP Basic auth with\nusername \"admin\" sent on every request, no token or session) \u2014 the\nofficial replacement for Palworld's now-deprecated source RCON, and\nlikewise not a socket protocol, so Port is a TCP port carrying HTTP.\n\"nuclearoption\" is Nuclear Option's JSON-RPC 2.0 TCP socket protocol.\n\"rest\" is a generic HTTP/JSON console API (POST-per-command, bearer-\nor basic-auth, distinct from the bespoke satisfactory/palworld clients).\n\"cli\" is console access over the container's stdin/PTY, enabling\nagent-driven console commands without requiring an exposed network port.\n\"none\" means the game has no usable remote console (see consoleMode:\npty for stdin-driven games instead).",
               "enum": [
                 "source",
                 "telnet",
@@ -1680,6 +1744,9 @@
                 "battleye",
                 "satisfactory",
                 "palworld",
+                "nuclearoption",
+                "rest",
+                "cli",
                 "none"
               ],
               "type": "string"
@@ -1910,7 +1977,7 @@
                           "description": "Selects a key of a ConfigMap.",
                           "properties": {
                             "key": {
-                              "description": "The key to select.",
+                              "description": "The key to select from the ConfigMap's Data field.\nKeys in the BinaryData field are not currently propagated to container env vars.",
                               "type": "string"
                             },
                             "name": {

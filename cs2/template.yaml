@@ -101,6 +101,24 @@ spec:
     port: 27015
     passwordEnv: CS2_RCONPW
 
+  probes:
+    startup:
+      tcpSocket:
+        port: rcon
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      failureThreshold: 120
+    readiness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 10
+      failureThreshold: 6
+    liveness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 30
+      failureThreshold: 5
+
   capabilities:
     # sv_shutdown waits for the CURRENT match (and anything queued) to
     # finish before exiting — mid-match, that means the operator blocks

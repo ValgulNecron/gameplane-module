@@ -130,3 +130,7 @@ around it (slow, automatic, not destructive).
   container's foreground process (per `install.sh`) ends up being a log
   `tail`, not the game's stdin. Flagged here rather than left silently
   assumed to work, since it wasn't independently verified.
+
+## Sample
+
+See [`samples/gameserver.yaml`](samples/gameserver.yaml) for an example deployment manifest.

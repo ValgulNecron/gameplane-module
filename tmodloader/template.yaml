@@ -1,0 +1,126 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
+# Gameplane GameTemplate for tModLoader (dedicated server).
+#
+# Backed by passivelemon/terraria-docker:tmodloader-latest. Dedicated server
+# running the tModLoader .NET 6 modding framework for Terraria. Console
+# attaches to container stdin (pty); no RCON.
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/tmodloader/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: tmodloader
+  labels:
+    gameplane.local/module: tmodloader
+spec:
+  displayName: tModLoader
+  game: tmodloader
+  version: 1.0.0
+  categories: [Sandbox, Survival, Adventure, Modded]
+  accentColor: "#10b981"
+  description: |
+    tModLoader dedicated server for modded Terraria. Supports custom `.tmod`
+    mods and modpacks with interactive console via container stdin (PTY).
+
+  image: passivelemon/terraria-docker:tmodloader-latest@sha256:3f2d8703421159f1037084bd2c0901a3a63b85a00801cf36f6f928e8b666b44e
+
+  security:
+    fsGroup: 1000
+
+  ports:
+    - name: game
+      containerPort: 7777
+      protocol: TCP
+      advertise: true
+      wakeProtocol: terraria
+
+  storage:
+    size: 4Gi
+    mountPath: /root/.local/share/Terraria/tModLoader
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "2"
+      memory: 4Gi
+
+  rcon:
+    protocol: none
+
+  consoleMode: pty
+
+  probes:
+    readiness:
+      tcpSocket:
+        port: game
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      failureThreshold: 30
+
+  capabilities:
+    lifecycle:
+      stop: ["exit"]
+    actions:
+      - id: broadcast
+        displayName: Broadcast message
+        icon: megaphone
+        transport: stdin
+        command: "say {{.Params.message}}"
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+      - id: save-world
+        displayName: Save world
+        icon: save
+        transport: stdin
+        command: "save"
+    mods:
+      path: Mods
+      extensions: [".tmod", ".zip"]
+      install:
+        allowedHosts:
+          - github.com
+          - .githubusercontent.com
+        maxSizeMB: 512
+
+  configSchema:
+    - name: WORLDNAME
+      displayName: World name
+      type: string
+      default: "tModLoaderWorld"
+      required: true
+    - name: AUTOCREATE
+      displayName: World size
+      description: World size to generate if the world doesn't exist. 1 small, 2 medium, 3 large.
+      type: enum
+      enum: ["1", "2", "3"]
+      default: "2"
+    - name: DIFFICULTY
+      displayName: Difficulty
+      description: "0 classic, 1 expert, 2 master, 3 journey."
+      type: enum
+      enum: ["0", "1", "2", "3"]
+      default: "1"
+    - name: PASSWORD
+      displayName: Server password
+      type: password
+      default: ""
+    - name: MAXPLAYERS
+      displayName: Max players
+      type: int
+      default: "8"
+    - name: MOTD
+      displayName: MOTD
+      type: string
+      default: "Welcome to Gameplane tModLoader Server"
+    - name: MODPACK
+      displayName: Active modpack
+      description: Active modpack name under ModPacks. Leave blank for none.
+      type: string
+      default: ""

@@ -1,0 +1,30 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: dont-starve-together-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: dont-starve-together
+
+  version: vanilla
+
+  config:
+    DST_CLUSTER_TOKEN: "secret-klei-token"
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 30999
+      - name: query
+        nodePort: 32018
+      - name: caves
+        nodePort: 31000
+
+  storage:
+    size: 5Gi
+
+  resources:
+    requests: { cpu: 1, memory: 1Gi }
+    limits:   { cpu: 2, memory: 2Gi }

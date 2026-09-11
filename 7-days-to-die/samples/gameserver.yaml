@@ -1,0 +1,27 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: 7-days-to-die-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: 7-days-to-die
+
+  config:
+    UNDEAD_LEGACY: "NO"
+    DARKNESS_FALLS: "NO"
+    ALLOC_FIXES: "NO"
+    MODS_URLS: ""
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 32690
+
+  storage:
+    size: 10Gi
+
+  resources:
+    requests: { cpu: 2, memory: 6Gi }
+    limits:   { cpu: 4, memory: 12Gi }

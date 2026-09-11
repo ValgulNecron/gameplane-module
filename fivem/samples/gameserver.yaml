@@ -1,0 +1,27 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: fivem-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: fivem
+
+  config:
+    CFX_LICENSE_KEY: "change-me-cfx-license-key"
+    SV_HOSTNAME: "Gameplane FiveM Server"
+    SV_MAXCLIENTS: "32"
+    ENABLE_EMBEDDED_DB: "true"
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 30120
+
+  storage:
+    size: 20Gi
+
+  resources:
+    requests: { cpu: 1, memory: 4Gi }
+    limits:   { cpu: 4, memory: 8Gi }

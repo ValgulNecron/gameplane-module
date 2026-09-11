@@ -43,8 +43,7 @@ PZ's canonical default, **27015**.
 
 ## Storage
 
-The PVC mounts at `/home/steam`, covering both the image's install tree
-(`zomboid/`) and its save/config tree (`zomboid_data/`) on one volume.
+The PVC mounts at `/home/steam/Zomboid`, covering the persistent world and configuration data.
 Default size is 15 GiB — heavy Workshop mod usage may need more.
 
 ## Backups
@@ -54,3 +53,7 @@ world** action forces one immediately and is also what backup quiesce
 runs before a snapshot. The image's own `BACKUPS_PERIOD`/`BACKUPS_COUNT`
 env vars are not wired here — use the Gameplane Backup CRD as the
 authoritative snapshot path instead.
+
+## Sample
+
+See [`samples/gameserver.yaml`](samples/gameserver.yaml) for an example deployment manifest.

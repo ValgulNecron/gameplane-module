@@ -1,0 +1,33 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: satisfactory-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: satisfactory
+
+  version: stable
+
+  config:
+    MAXPLAYERS: 4
+    MAXTICKRATE: 30
+    AUTOSAVENUM: 5
+    TIMEOUT: 30
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 30777
+      - name: game-tcp
+        nodePort: 30777
+      - name: messaging
+        nodePort: 30888
+
+  storage:
+    size: 25Gi
+
+  resources:
+    requests: { cpu: 2, memory: 6Gi }
+    limits:   { cpu: 6, memory: 16Gi }

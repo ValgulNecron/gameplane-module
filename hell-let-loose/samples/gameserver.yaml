@@ -1,0 +1,31 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: hell-let-loose-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: hell-let-loose
+
+  version: default
+
+  config:
+    SERVER_NAME: "Gameplane Hell Let Loose Server"
+    SERVER_PASSWORD: ""
+    RCON_PASSWORD: "secret-rcon-password"
+    MAX_PLAYERS: 100
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 30787
+      - name: query
+        nodePort: 32165
+
+  storage:
+    size: 35Gi
+
+  resources:
+    requests: { cpu: 2, memory: 8Gi }
+    limits:   { cpu: 6, memory: 16Gi }

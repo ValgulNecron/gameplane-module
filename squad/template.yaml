@@ -1,0 +1,152 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
+# Gameplane GameTemplate for Squad (dedicated server).
+#
+# Runs Unreal Engine 4 dedicated server with Source-family RCON on TCP 21114.
+# Match-based rotation with persistent configurations under /serverdata/Squad/Saved.
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/squad/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: squad
+  labels:
+    gameplane.local/module: squad
+spec:
+  displayName: Squad
+  game: squad
+  version: 1.0.0
+  categories: [Shooter, Tactical, Military, Multiplayer]
+  accentColor: "#2d3748"
+  description: |
+    Squad dedicated multiplayer server. Source-family RCON powers remote
+    console moderation, map rotation, and server administration on TCP port 21114.
+    Server configuration and match logs persist under `/serverdata/Squad/Saved`.
+
+  image: ghcr.io/valgulnecron/gameplane/squad:latest@sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+  versions:
+    - id: latest
+      displayName: "Latest (UE4)"
+      image: ghcr.io/valgulnecron/gameplane/squad:latest@sha256:0000000000000000000000000000000000000000000000000000000000000000
+      default: true
+
+  env:
+    - name: HOME
+      value: /serverdata
+
+  security:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  ports:
+    - name: game
+      containerPort: 7787
+      protocol: UDP
+      advertise: true
+    - name: query
+      containerPort: 27165
+      protocol: UDP
+      advertise: true
+    - name: rcon
+      containerPort: 21114
+      protocol: TCP
+      advertise: false
+
+  storage:
+    size: 40Gi
+    mountPath: /serverdata/Squad/Saved
+
+  resources:
+    requests: {cpu: "2", memory: 8Gi}
+    limits: {cpu: "6", memory: 16Gi}
+
+  rcon:
+    protocol: source
+    port: 21114
+    passwordEnv: RCON_PASSWORD
+
+  consoleMode: rcon
+
+  probes:
+    startup:
+      tcpSocket:
+        port: rcon
+      initialDelaySeconds: 60
+      periodSeconds: 15
+      failureThreshold: 60
+    readiness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 10
+      failureThreshold: 6
+    liveness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 30
+      failureThreshold: 5
+
+  capabilities:
+    actions:
+      - id: broadcast
+        displayName: Broadcast
+        icon: megaphone
+        group: Server
+        command: 'AdminBroadcast {{.Params.message}}'
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+      - id: change-map
+        displayName: Change Map
+        icon: map
+        group: Game
+        command: "AdminChangeLayer {{.Params.map}}"
+        params:
+          - name: map
+            displayName: Map Name
+            type: string
+            required: true
+      - id: kick-player
+        displayName: Kick Player
+        icon: user-x
+        group: Moderation
+        command: "AdminKick {{.Params.user}}"
+        params:
+          - name: user
+            displayName: Player Name or SteamID
+            type: string
+            required: true
+    mods:
+      path: Plugins/Mods
+      extensions: [".pak"]
+      install:
+        allowedHosts:
+          - github.com
+          - .githubusercontent.com
+        maxSizeMB: 1024
+      registry:
+        providers:
+          - provider: steam
+            steamAppID: 393380
+
+  configSchema:
+    - name: SERVER_NAME
+      displayName: Server Name
+      type: string
+      default: "Gameplane Squad Server"
+    - name: SERVER_PASSWORD
+      displayName: Server Password
+      type: password
+      default: ""
+    - name: RCON_PASSWORD
+      displayName: RCON Password
+      type: password
+      default: ""
+    - name: MAX_PLAYERS
+      displayName: Max Players
+      type: int
+      default: 100

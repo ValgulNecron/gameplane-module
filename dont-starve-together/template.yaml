@@ -31,6 +31,10 @@ spec:
       containerPort: 10999
       protocol: UDP
       advertise: true
+    - name: query
+      containerPort: 27018
+      protocol: UDP
+      advertise: true
     - name: caves
       containerPort: 11000
       protocol: UDP
