@@ -55,6 +55,9 @@ spec:
       cpu: "1"
       memory: 2Gi
 
+  security:
+    fsGroup: 1000
+
   # Terraria's command interface is the container stdin (no RCON), so the
   # Console tab attaches via the kubelet's pod-attach API.
   rcon:

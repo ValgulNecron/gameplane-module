@@ -94,6 +94,10 @@ spec:
           - github.com
           - .githubusercontent.com
         maxSizeMB: 512
+      registry:
+        providers:
+          - provider: steam
+            steamAppID: 1874880
 
   configSchema:
     - name: SERVER_NAME

@@ -97,6 +97,14 @@ spec:
             displayName: Message
             type: string
             required: true
+    mods:
+      path: resources
+      extensions: [".zip", ".lua", ".js"]
+      install:
+        allowedHosts:
+          - github.com
+          - .githubusercontent.com
+        maxSizeMB: 512
 
   configSchema:
     - name: CFX_LICENSE_KEY
