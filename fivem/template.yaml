@@ -1,0 +1,120 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
+# Gameplane GameTemplate for FiveM (dedicated server).
+#
+# Backed by Gameplane-owned FiveM image with supervised txAdmin web management
+# and embedded MariaDB database (FR-012), with non-crashing diagnostic idle
+# when the CFX license key is missing (FR-013).
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/fivem/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: fivem
+  labels:
+    gameplane.local/module: fivem
+spec:
+  displayName: FiveM
+  game: fivem
+  version: 1.0.0
+  categories: [Roleplay, Multiplayer, Sandbox]
+  accentColor: "#ea580c"
+  description: |
+    FiveM dedicated server with bundled txAdmin management and embedded
+    database supervision. Remote console and commands operate via txAdmin's
+    REST API.
+
+  image: ghcr.io/valgulnecron/gameplane/fivem:latest@sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+  env:
+    - name: HOME
+      value: /home/gameplane
+
+  security:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  ports:
+    - name: game
+      containerPort: 30120
+      protocol: UDP
+      advertise: true
+    - name: http
+      containerPort: 30120
+      protocol: TCP
+      advertise: true
+    - name: txadmin
+      containerPort: 40120
+      protocol: TCP
+      advertise: false
+
+  storage:
+    size: 20Gi
+    mountPath: /server-data
+
+  resources:
+    requests: {cpu: "1", memory: 4Gi}
+    limits: {cpu: "4", memory: 8Gi}
+
+  rcon:
+    protocol: rest
+    port: 40120
+    passwordEnv: TXADMIN_TOKEN
+
+  consoleMode: rcon
+
+  probes:
+    startup:
+      tcpSocket:
+        port: txadmin
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      failureThreshold: 60
+    readiness:
+      tcpSocket:
+        port: txadmin
+      periodSeconds: 10
+      failureThreshold: 6
+    liveness:
+      tcpSocket:
+        port: txadmin
+      periodSeconds: 30
+      failureThreshold: 5
+
+  capabilities:
+    lifecycle:
+      stop: ["quit"]
+    actions:
+      - id: broadcast
+        displayName: Broadcast
+        icon: megaphone
+        group: Server
+        command: 'say "{{.Params.message}}"'
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+
+  configSchema:
+    - name: CFX_LICENSE_KEY
+      displayName: Cfx.re License Key
+      description: CitizenFX server license key from keymaster.fivem.net.
+      type: password
+      required: true
+      default: ""
+    - name: SV_HOSTNAME
+      displayName: Server Hostname
+      type: string
+      default: "Gameplane FiveM Server"
+    - name: SV_MAXCLIENTS
+      displayName: Max Clients
+      type: int
+      default: "32"
+    - name: ENABLE_EMBEDDED_DB
+      displayName: Enable Embedded Database
+      description: Run in-pod MariaDB for resources and txAdmin.
+      type: string
+      default: "true"

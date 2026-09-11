@@ -1,0 +1,27 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: team-fortress-2-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: team-fortress-2
+
+  config:
+    SRCDS_TOKEN: ""
+    SRCDS_HOSTNAME: "Gameplane TF2 Server"
+    SRCDS_STARTMAP: "ctf_2fort"
+    SRCDS_MAXPLAYERS: 24
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 32015
+
+  storage:
+    size: 15Gi
+
+  resources:
+    requests: { cpu: 1, memory: 2Gi }
+    limits:   { cpu: 4, memory: 4Gi }

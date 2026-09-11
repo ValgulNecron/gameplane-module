@@ -1,0 +1,27 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: euro-truck-simulator-2-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: euro-truck-simulator-2
+
+  config:
+    SERVER_LOGON_TOKEN: "change-me-logon-token"
+    SERVER_NAME: "Gameplane ETS2 Convoy"
+    MAX_PLAYERS: 8
+    SERVER_PASSWORD: ""
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 32016
+
+  storage:
+    size: 10Gi
+
+  resources:
+    requests: { cpu: 1, memory: 2Gi }
+    limits:   { cpu: 4, memory: 4Gi }

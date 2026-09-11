@@ -70,6 +70,7 @@ Running with no mods needs none of this.
 | ----- | ----- | -------- | ---------- |
 | game  | 2302  | UDP      | yes        |
 | query | 27015 | UDP      | no         |
+| rcon  | 2305  | UDP      | no         |
 
 ## Storage
 
@@ -85,3 +86,7 @@ makes with its own SteamCMD-on-boot image. Default size is 40 GiB.
 Every port this image exposes is UDP, and it has no HTTP endpoint —
 there is no TCP or HTTP surface to probe, so none is declared. Kubernetes
 falls back to treating the pod as ready once the container is running.
+
+## Sample
+
+See [`samples/gameserver.yaml`](samples/gameserver.yaml) for an example deployment manifest.

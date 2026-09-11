@@ -1,0 +1,106 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
+# Gameplane GameTemplate for Farming Simulator 25 (dedicated server).
+#
+# Backed by Gameplane-owned headless Wine container supervising both the game
+# process and the web management portal (FR-012). Remote administration
+# communicates with the web portal via the REST RCON client.
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/farming-simulator-25/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: farming-simulator-25
+  labels:
+    gameplane.local/module: farming-simulator-25
+spec:
+  displayName: Farming Simulator 25
+  game: farming-simulator-25
+  version: 1.0.0
+  categories: [Simulation, Agriculture, Co-op]
+  accentColor: "#84cc16"
+  description: |
+    Farming Simulator 25 dedicated server running via headless Wine with
+    an integrated web management portal. Remote control and state management
+    use the web portal REST API.
+
+  image: ghcr.io/valgulnecron/gameplane/farming-simulator-25:latest@sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+  env:
+    - name: HOME
+      value: /home/gameplane
+
+  security:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  ports:
+    - name: game
+      containerPort: 10823
+      protocol: UDP
+      advertise: true
+    - name: web
+      containerPort: 8080
+      protocol: TCP
+      advertise: true
+
+  storage:
+    size: 20Gi
+    mountPath: /data/My Games/FarmingSimulator2025
+
+  resources:
+    requests: {cpu: "2", memory: 4Gi}
+    limits: {cpu: "4", memory: 8Gi}
+
+  rcon:
+    protocol: rest
+    port: 8080
+    passwordEnv: ADMIN_PASSWORD
+
+  consoleMode: none
+
+  probes:
+    startup:
+      tcpSocket:
+        port: web
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      failureThreshold: 120
+    readiness:
+      tcpSocket:
+        port: web
+      periodSeconds: 10
+      failureThreshold: 6
+    liveness:
+      tcpSocket:
+        port: web
+      periodSeconds: 30
+      failureThreshold: 5
+
+  capabilities:
+    lifecycle:
+      stop: ["save"]
+    actions:
+      - id: save-world
+        displayName: Save game
+        icon: save
+        group: World
+        command: "save"
+
+  configSchema:
+    - name: ADMIN_PASSWORD
+      displayName: Web Admin Password
+      description: Password for the dedicated server web admin portal.
+      type: password
+      required: true
+      default: ""
+    - name: SERVER_NAME
+      displayName: Server Name
+      type: string
+      default: "Gameplane FS25 Server"
+    - name: MAX_PLAYERS
+      displayName: Max Players
+      type: int
+      default: 16

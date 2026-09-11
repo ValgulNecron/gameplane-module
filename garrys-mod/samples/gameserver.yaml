@@ -1,0 +1,28 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: garrys-mod-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: garrys-mod
+
+  config:
+    NAME: "Gameplane Garry's Mod Server"
+    GSLT: ""
+    MAXPLAYERS: "16"
+    GAMEMODE: "sandbox"
+    MAP: "gm_construct"
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 32715
+
+  storage:
+    size: 15Gi
+
+  resources:
+    requests: { cpu: 1, memory: 2Gi }
+    limits:   { cpu: 2, memory: 4Gi }

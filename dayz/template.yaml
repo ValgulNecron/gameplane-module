@@ -81,6 +81,10 @@ spec:
       containerPort: 27015
       protocol: UDP
       advertise: false
+    - name: rcon
+      containerPort: 2305
+      protocol: UDP
+      advertise: false
 
   # ServerZ documents four separate paths (/data, /overrides, /install,
   # /root/.steam) with no common parent besides /. Only /data (world/

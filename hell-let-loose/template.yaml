@@ -1,0 +1,144 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
+# Gameplane GameTemplate for Hell Let Loose (dedicated server).
+#
+# Runs Unreal Engine dedicated server with Source RCON on TCP 22222.
+# Match-based rotation with persistent configurations under /serverdata/HLL/Saved.
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/hell-let-loose/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: hell-let-loose
+  labels:
+    gameplane.local/module: hell-let-loose
+spec:
+  displayName: Hell Let Loose
+  game: hell-let-loose
+  version: 1.0.0
+  categories: [Shooter, Tactical, WWII, Multiplayer]
+  accentColor: "#7f1d1d"
+  description: |
+    Hell Let Loose dedicated multiplayer server. Source RCON powers remote
+    console moderation, map rotation, and server administration on TCP port 22222.
+    Server configuration and match logs persist under `/serverdata/HLL/Saved`.
+
+  image: ghcr.io/valgulnecron/gameplane/hell-let-loose:latest@sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+  versions:
+    - id: default
+      displayName: "Default (WWII)"
+      image: ghcr.io/valgulnecron/gameplane/hell-let-loose:latest@sha256:0000000000000000000000000000000000000000000000000000000000000000
+      default: true
+    - id: vietnam
+      displayName: "Vietnam Community Preset"
+      image: ghcr.io/valgulnecron/gameplane/hell-let-loose:vietnam@sha256:0000000000000000000000000000000000000000000000000000000000000000
+      default: false
+
+  env:
+    - name: HOME
+      value: /serverdata
+
+  security:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  ports:
+    - name: game
+      containerPort: 7787
+      protocol: UDP
+      advertise: true
+    - name: query
+      containerPort: 27165
+      protocol: UDP
+      advertise: true
+    - name: rcon
+      containerPort: 22222
+      protocol: TCP
+      advertise: false
+
+  storage:
+    size: 35Gi
+    mountPath: /serverdata/HLL/Saved
+
+  resources:
+    requests: {cpu: "2", memory: 8Gi}
+    limits: {cpu: "6", memory: 16Gi}
+
+  rcon:
+    protocol: source
+    port: 22222
+    passwordEnv: RCON_PASSWORD
+
+  consoleMode: rcon
+
+  probes:
+    startup:
+      tcpSocket:
+        port: rcon
+      initialDelaySeconds: 60
+      periodSeconds: 15
+      failureThreshold: 60
+    readiness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 10
+      failureThreshold: 6
+    liveness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 30
+      failureThreshold: 5
+
+  capabilities:
+    actions:
+      - id: broadcast
+        displayName: Broadcast
+        icon: megaphone
+        group: Server
+        command: 'say "{{.Params.message}}"'
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+      - id: change-map
+        displayName: Change Map
+        icon: map
+        group: Game
+        command: "map {{.Params.map}}"
+        params:
+          - name: map
+            displayName: Map Name
+            type: string
+            required: true
+      - id: kick-player
+        displayName: Kick Player
+        icon: user-x
+        group: Moderation
+        command: "kick {{.Params.user}}"
+        params:
+          - name: user
+            displayName: Player Name
+            type: string
+            required: true
+
+  configSchema:
+    - name: SERVER_NAME
+      displayName: Server Name
+      type: string
+      default: "Gameplane Hell Let Loose Server"
+    - name: SERVER_PASSWORD
+      displayName: Server Password
+      type: password
+      default: ""
+    - name: RCON_PASSWORD
+      displayName: RCON Password
+      type: password
+      default: ""
+    - name: MAX_PLAYERS
+      displayName: Max Players
+      type: int
+      default: 100

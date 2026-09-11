@@ -96,6 +96,8 @@ spec:
       failureThreshold: 30
 
   capabilities:
+    lifecycle:
+      stop: ["exit"]
     # Terraria has no RCON (rcon.protocol: none above), so every action
     # below runs over stdin pod-attach instead of RCON — fire-and-forget:
     # no output returns inline, it appears in the Console tab. transport:

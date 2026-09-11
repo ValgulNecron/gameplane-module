@@ -1,0 +1,137 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
+# Gameplane GameTemplate for The Isle (dedicated server).
+#
+# Runs Unreal Engine 4 dedicated server with Source RCON on TCP 8888.
+# World state, dinosaurs, and configs persist under /serverdata/TheIsle/Saved.
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/the-isle/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: the-isle
+  labels:
+    gameplane.local/module: the-isle
+spec:
+  displayName: The Isle
+  game: the-isle
+  version: 1.0.0
+  categories: [Survival, Dinosaur, Open World, Multiplayer]
+  accentColor: "#22543d"
+  description: |
+    The Isle dedicated multiplayer server running on Unreal Engine.
+    Source RCON powers remote console administration on port 8888 TCP;
+    saves and server configurations persist under `TheIsle/Saved`.
+
+  image: ghcr.io/valgulnecron/gameplane/the-isle:latest@sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+  versions:
+    - id: evrima
+      displayName: "The Isle (Evrima / UE)"
+      image: ghcr.io/valgulnecron/gameplane/the-isle:latest@sha256:0000000000000000000000000000000000000000000000000000000000000000
+      default: true
+
+  env:
+    - name: HOME
+      value: /serverdata
+
+  security:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  ports:
+    - name: game
+      containerPort: 7777
+      protocol: UDP
+      advertise: true
+    - name: query
+      containerPort: 7778
+      protocol: UDP
+      advertise: true
+    - name: rcon
+      containerPort: 8888
+      protocol: TCP
+      advertise: false
+
+  storage:
+    size: 25Gi
+    mountPath: /serverdata/TheIsle/Saved
+
+  resources:
+    requests: {cpu: "2", memory: 4Gi}
+    limits: {cpu: "4", memory: 8Gi}
+
+  rcon:
+    protocol: source
+    port: 8888
+    passwordEnv: RCON_PASSWORD
+
+  consoleMode: rcon
+
+  probes:
+    startup:
+      tcpSocket:
+        port: rcon
+      initialDelaySeconds: 60
+      periodSeconds: 15
+      failureThreshold: 60
+    readiness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 10
+      failureThreshold: 6
+    liveness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 30
+      failureThreshold: 5
+
+  capabilities:
+    lifecycle:
+      stop: ["save"]
+    actions:
+      - id: save-world
+        displayName: Save World
+        icon: save
+        group: Server
+        command: "save"
+      - id: broadcast
+        displayName: Broadcast
+        icon: megaphone
+        group: Server
+        command: 'announce "{{.Params.message}}"'
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+      - id: kick-player
+        displayName: Kick Player
+        icon: user-x
+        group: Moderation
+        command: "kick {{.Params.user}}"
+        params:
+          - name: user
+            displayName: Player Name or ID
+            type: string
+            required: true
+
+  configSchema:
+    - name: SERVER_NAME
+      displayName: Server Name
+      type: string
+      default: "Gameplane The Isle Server"
+    - name: SERVER_PASSWORD
+      displayName: Server Password
+      type: password
+      default: ""
+    - name: RCON_PASSWORD
+      displayName: RCON Password
+      type: password
+      default: ""
+    - name: MAX_PLAYERS
+      displayName: Max Players
+      type: int
+      default: 50

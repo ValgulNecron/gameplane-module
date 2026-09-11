@@ -117,3 +117,7 @@ need more.
   `GameUserSettings.ini` via the Files tab (see Console & RCON / Server
   name above) — Gameplane can't safely automate either without risking
   wiping other in-game-tuned settings on the next restart.
+
+## Sample
+
+See [`samples/gameserver.yaml`](samples/gameserver.yaml) for an example deployment manifest.

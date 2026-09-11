@@ -66,3 +66,7 @@ This 2.0 module switches the image from `ryshe/terraria` to
 `LANGUAGE`/`MODPACK`). Treat it as a new template revision: existing running
 servers are not auto-migrated — create new servers on 2.0, and copy worlds
 across manually if needed.
+
+## Sample
+
+See [`samples/gameserver.yaml`](samples/gameserver.yaml) for an example deployment manifest.

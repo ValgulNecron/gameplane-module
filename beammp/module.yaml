@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../.schema/module.schema.json
+apiVersion: gameplane.local/module/v1
+name: beammp
+displayName: BeamMP
+version: 1.0.0
+game: beammp
+categories: [Simulation, Driving, Physics, Multiplayer]
+summary: BeamMP dedicated server for BeamNG.drive multiplayer with PTY console, custom vehicle/map mods, and diagnostic idle.
+homepage: https://beammp.com/
+license: MIT
+gameplaneMinVersion: 0.2.0-beta.7

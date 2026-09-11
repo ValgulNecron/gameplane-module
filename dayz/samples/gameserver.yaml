@@ -1,0 +1,26 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: dayz-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: dayz
+
+  config:
+    TEMPLATE: "dayzOffline.chernarusplus"
+    MOTD: "Welcome to Gameplane DayZ Server"
+    MOD_LIST: ""
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 32302
+
+  storage:
+    size: 40Gi
+
+  resources:
+    requests: { cpu: 2, memory: 6Gi }
+    limits:   { cpu: 4, memory: 12Gi }

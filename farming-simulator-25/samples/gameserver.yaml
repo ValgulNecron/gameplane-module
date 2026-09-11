@@ -1,0 +1,26 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: farming-simulator-25-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: farming-simulator-25
+
+  config:
+    ADMIN_PASSWORD: "change-me-admin-password"
+    SERVER_NAME: "Gameplane FS25 Server"
+    MAX_PLAYERS: 16
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 30823
+
+  storage:
+    size: 20Gi
+
+  resources:
+    requests: { cpu: 2, memory: 4Gi }
+    limits:   { cpu: 4, memory: 8Gi }

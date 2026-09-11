@@ -118,3 +118,7 @@ on the same TCP listener being bound regardless of RCON state.
   you change `PUID`/`PGID` outside this template, ensure the PVC's data
   is readable by that uid or srcds exits on startup instead of looping
   (the image's own entrypoint checks this explicitly).
+
+## Sample
+
+See [`samples/gameserver.yaml`](samples/gameserver.yaml) for an example deployment manifest.

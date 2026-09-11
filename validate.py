@@ -126,7 +126,7 @@ CURL_TIMEOUT_SECS = 15
 # the GameTemplate CRD's rcon.protocol enum and agent/internal/rcon/. A protocol
 # listed here but not implemented lets a module ship a console that never
 # connects, so this list is deliberately conservative.
-RCON_PROTOCOLS = ("source", "telnet", "websocket", "battleye", "satisfactory", "palworld", "nuclearoption", "none")
+RCON_PROTOCOLS = ("source", "telnet", "websocket", "battleye", "satisfactory", "palworld", "nuclearoption", "rest", "cli", "none")
 
 
 
@@ -1026,6 +1026,62 @@ def rule_credential_fields_must_be_password(spec: dict) -> list[Finding]:
     return findings
 
 
+LAYOUT_ENFORCED_MODULES = {
+    "cs2",
+    "palworld",
+    "fivem",
+    "rust",
+    "project-zomboid",
+    "team-fortress-2",
+    "dayz",
+    "farming-simulator-25",
+    "euro-truck-simulator-2",
+    "garrys-mod",
+    "mount-and-blade-2-bannerlord",
+    "terraria",
+    "7-days-to-die",
+    "tmodloader",
+    "beammp",
+    "ark-survival-ascended",
+    "left-4-dead-2",
+    "factorio",
+    "the-isle",
+    "dont-starve-together",
+    "valheim",
+    "satisfactory",
+    "ark-survival-evolved",
+    "arma-reforger",
+    "hell-let-loose",
+    "squad",
+}
+
+
+def rule_directory_layout(module_dir: Path) -> list[Finding]:
+    """Ensure required metadata, documentation, and samples are present.
+
+    Fires at ERROR severity when README.md, specs.md, or a non-empty samples/
+    directory is missing. Scoped to the 26 top-Steam modules or any module
+    with a .layout-enforced marker file.
+    """
+    if module_dir.name not in LAYOUT_ENFORCED_MODULES and not (module_dir / ".layout-enforced").exists():
+        return []
+
+    findings: list[Finding] = []
+    readme = module_dir / "README.md"
+    if not readme.is_file() or readme.stat().st_size == 0:
+        findings.append(Finding(ERROR, "missing-layout-file", "module is missing README.md"))
+
+    specs = module_dir / "specs.md"
+    if not specs.is_file() or specs.stat().st_size == 0:
+        findings.append(Finding(ERROR, "missing-layout-file", "module is missing specs.md"))
+
+    samples = module_dir / "samples"
+    if not samples.is_dir() or not any(samples.iterdir()):
+        findings.append(Finding(ERROR, "missing-layout-file", "module is missing non-empty samples/ directory"))
+
+    return findings
+
+
 # --------------------------------------------------------------------------
 # Orchestration
 # --------------------------------------------------------------------------
@@ -1179,7 +1235,7 @@ def pin_templates(module_dirs: list[Path]) -> int:
 
 def discover_modules(root: Path, names: list[str] | None) -> list[Path]:
     if names:
-        return [root / n for n in names]
+        return [Path(n) if Path(n).is_dir() else root / n for n in names]
     out = []
     for child in sorted(root.iterdir()):
         if child.is_dir() and (child / "template.yaml").exists():
@@ -1223,7 +1279,7 @@ def main(argv: list[str]) -> int:
             continue
         spec = (doc or {}).get("spec") or {}
 
-        findings = validate_module(spec, cache)
+        findings = rule_directory_layout(module_dir) + validate_module(spec, cache)
         print(f"== {module_dir.name} ==")
         if not findings:
             print("  OK (no findings)")

@@ -10,27 +10,14 @@ install, data persists under `/steamcmd/rust`).
 kubectl apply -f modules/rust/template.yaml
 ```
 
-## Console — pty, no RCON
+## Console & Remote Management (WebRCON)
 
-Rust's admin RCON is **WebSocket-only** (Facepunch's own `rcon.web`
-tooling) — it does not speak the Source RCON wire protocol the agent
-implements, and there is no raw-TCP fallback. `rcon.protocol` is therefore
-`none`; the **Console** tab instead attaches to the container's stdin/stdout
-(pty), the same transport every community Docker/tmux wrapper uses to drive
-RustDedicated's interactive console.
+Rust's administrative interface uses **WebSocket-over-TCP** (Facepunch's `rcon.web` / WebRCON). The Gameplane agent implements this natively (`rcon.protocol: websocket`), connecting in-pod to port 28016 with password authentication supplied via `RUST_RCON_PASSWORD`.
 
-Consequences:
-
-- No Players tab, moderation, quiesce, or one-click actions — all of those
-  are RCON-backed everywhere in Gameplane, and Rust has no reachable RCON.
-- The template declares `capabilities.lifecycle.stop: ["server.save",
-  "quit"]` (the documented clean-shutdown sequence) for when Gameplane's
-  operator gains a PTY-stdin stop path — until then it's a documented no-op,
-  and the server relies on its own autosave interval plus a generous
-  `terminationGracePeriodSeconds` on SIGTERM.
-- Port 28016 (WebRCON) is declared but not advertised — Gameplane doesn't
-  use it. If you want a third-party WebRCON client (e.g. rustadmin), expose
-  it yourself via `networking.portOverrides`.
+- Console tab connects directly over WebRCON.
+- Live player list with regex extraction of display names.
+- Moderation (kick, ban) and server actions (broadcast, save-world, announce-restart).
+- Graceful stop sequence executes `server.save` followed by `quit` over RCON before pod termination.
 
 ## Version picker (Oxide / Carbon)
 

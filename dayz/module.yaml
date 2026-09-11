@@ -5,7 +5,7 @@ displayName: DayZ
 version: 1.1.1
 game: dayz
 categories: [Survival, Shooter, PvP, Horror]
-summary: DayZ dedicated server (GodBleak/ServerZ). No RCON is reachable (proprietary BattlEye RCon, not Source RCON) — manage via SIGTERM-safe restarts and config fields.
+summary: DayZ dedicated server (GodBleak/ServerZ) with BattlEye RCon console, player listing, and administrative actions.
 homepage: https://dayz.com/
 license: MIT
 gameplaneMinVersion: 0.2.0-beta.7

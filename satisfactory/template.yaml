@@ -79,6 +79,9 @@ spec:
     - name: PGID
       value: "1000"
 
+  security:
+    fsGroup: 1000
+
   ports:
     # Satisfactory 1.0 uses a single game port for both UDP and TCP, plus a
     # TCP "messaging" port. All are needed by clients, so all are advertised.
@@ -150,6 +153,8 @@ spec:
   # tab, it stays inert until the one-time in-game claim + admin-password
   # file documented in the header comment above is done.
   capabilities:
+    lifecycle:
+      stop: ["SaveGame"]
     actions:
       - id: save-game
         displayName: Save game
