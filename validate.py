@@ -1243,20 +1243,89 @@ def discover_modules(root: Path, names: list[str] | None) -> list[Path]:
     return out
 
 
+def find_gp_module_bin(root: Path) -> str | None:
+    import shutil
+    gp_bin = shutil.which("gp-module")
+    if gp_bin:
+        return gp_bin
+    candidates = [
+        root.parent / "bin" / "gp-module",
+        root / "bin" / "gp-module",
+        root.parent / "gp-module" / "bin" / "gp-module",
+    ]
+    for c in candidates:
+        if c.is_file() and os.access(c, os.X_OK):
+            return str(c)
+    return None
+
+
 def main(argv: list[str]) -> int:
     root = Path(__file__).resolve().parent
     args = argv[1:]
+
+    if "-h" in args or "--help" in args:
+        print("""Usage: validate.py [options] [module_names...]
+
+Gameplane module validator.
+
+Options:
+  --offline   Run offline static preflight validation via gp-module
+  --pin       Resolve and pin image digests in template.yaml
+  -h, --help  Show this help message
+""")
+        return 0
 
     # `--pin` is a maintenance/codegen mode, not a check: it rewrites the
     # templates rather than reporting on them. Kept as a flag on this script
     # (rather than a separate tool) so it shares one registry-access
     # implementation with the rules that enforce its output.
     pin_mode = "--pin" in args
+    offline_mode = "--offline" in args
     names = [a for a in args if not a.startswith("-")] or None
     module_dirs = discover_modules(root, names)
 
     if pin_mode:
         return pin_templates(module_dirs)
+
+    gp_bin = find_gp_module_bin(root)
+
+    if offline_mode:
+        if not gp_bin:
+            sys.stderr.write("error: gp-module binary not found; required for --offline validation\n")
+            return 2
+        cmd = [gp_bin, "validate"]
+        if "--json" in args:
+            cmd.append("--json")
+        if "--strict" in args:
+            cmd.append("--strict")
+        cmd.extend([str(d) for d in module_dirs])
+        return subprocess.run(cmd).returncode
+
+    offline_findings: dict[str, list[Finding]] = {}
+    if gp_bin and "--skip-offline" not in args:
+        try:
+            res = subprocess.run(
+                [gp_bin, "validate", "--json"] + [str(d) for d in module_dirs],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            if res.stdout:
+                data = json.loads(res.stdout)
+                for mod in data.get("modules", []):
+                    mod_name = mod.get("name")
+                    f_list = []
+                    for item in mod.get("findings", []):
+                        f_list.append(
+                            Finding(
+                                level=item.get("level", ERROR),
+                                rule=item.get("ruleId", "offline-rule"),
+                                message=f"{item.get('file')}:{item.get('line', 0)}: {item.get('message')}",
+                            )
+                        )
+                    offline_findings[mod_name] = f_list
+        except Exception:
+            pass
 
     cache: dict[str, dict] = {}
     any_error = False
@@ -1280,6 +1349,8 @@ def main(argv: list[str]) -> int:
         spec = (doc or {}).get("spec") or {}
 
         findings = rule_directory_layout(module_dir) + validate_module(spec, cache)
+        if module_dir.name in offline_findings:
+            findings.extend(offline_findings[module_dir.name])
         print(f"== {module_dir.name} ==")
         if not findings:
             print("  OK (no findings)")
