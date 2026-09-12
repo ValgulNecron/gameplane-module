@@ -11,7 +11,7 @@ spec:
     BEAMMP_AUTH_KEY: "change-me-auth-key"
     SERVER_NAME: "Gameplane BeamMP Server"
     MAP: "/levels/gridmap_v2/info.json"
-    MAX_PLAYERS: 10
+    MAX_PLAYERS: "10"
 
   networking:
     expose: NodePort

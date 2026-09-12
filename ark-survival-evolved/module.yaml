@@ -1,11 +1,11 @@
 # yaml-language-server: $schema=../.schema/module.schema.json
 apiVersion: gameplane.local/module/v1
 name: ark-survival-evolved
-displayName: ARK: Survival Evolved
+displayName: "ARK: Survival Evolved"
 version: 1.0.0
 game: ark-survival-evolved
 categories: [Survival, Open World, Multiplayer, Dinosaurs]
-summary: ARK: Survival Evolved dedicated server with Source RCON console, cluster travel support, and persistent world state.
+summary: "ARK: Survival Evolved dedicated server with Source RCON console, cluster travel support, and persistent world state."
 homepage: https://survivetheark.com/
 license: MIT
 gameplaneMinVersion: 0.2.0-beta.7

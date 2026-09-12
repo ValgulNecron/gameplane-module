@@ -50,7 +50,7 @@ spec:
     - name: query
       containerPort: 27015
       protocol: UDP
-      advertise: true
+      advertise: false
     - name: rcon
       containerPort: 27015
       protocol: TCP
