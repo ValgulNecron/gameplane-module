@@ -1290,6 +1290,7 @@ Options:
             any_error = True
             errored.append(module_dir.name)
             continue
+        spec = (doc or {}).get("spec") or {}
         findings = validate_module(spec, cache)
         if module_dir.name in offline_findings:
             findings.extend(offline_findings[module_dir.name])
