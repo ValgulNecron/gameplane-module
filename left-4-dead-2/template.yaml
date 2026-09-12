@@ -1,0 +1,151 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
+# Gameplane GameTemplate for Left 4 Dead 2 (dedicated server).
+#
+# Backed by left4devops/l4d2. L4D2 dedicated server runs under the Source engine
+# with standard Source RCON on TCP 27015. Stateless match-based gameplay
+# with clean shutdown via `quit`.
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/left-4-dead-2/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: left-4-dead-2
+  labels:
+    gameplane.local/module: left-4-dead-2
+spec:
+  displayName: Left 4 Dead 2
+  game: left-4-dead-2
+  version: 1.0.0
+  categories: [Shooter, Action, Co-op]
+  accentColor: "#357a38"
+  description: |
+    Left 4 Dead 2 dedicated server using [left4devops/l4d2](https://github.com/left4devops/l4d2).
+    Source RCON powers the console, moderation, and in-game actions;
+    SourceMod and MetaMod plugins install under `left4dead2/addons`.
+
+  image: left4devops/l4d2:latest@sha256:66af49bae4f6a615393001078330196f565e9c8bd1d0eacdaf73cd923b3572c3
+
+  versions:
+    - id: latest
+      displayName: Latest (Source Engine)
+      image: left4devops/l4d2:latest@sha256:66af49bae4f6a615393001078330196f565e9c8bd1d0eacdaf73cd923b3572c3
+      default: true
+
+  env:
+    - name: HOME
+      value: /home/steam
+
+  security:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  ports:
+    - name: game
+      containerPort: 27015
+      protocol: UDP
+      advertise: true
+    - name: query
+      containerPort: 27015
+      protocol: UDP
+      advertise: false
+    - name: rcon
+      containerPort: 27015
+      protocol: TCP
+      advertise: false
+
+  storage:
+    size: 15Gi
+    mountPath: /home/steam/l4d2-dedicated
+
+  resources:
+    requests: {cpu: "1", memory: 2Gi}
+    limits: {cpu: "4", memory: 4Gi}
+
+  rcon:
+    protocol: source
+    port: 27015
+    passwordEnv: RCON_PASSWORD
+
+  consoleMode: rcon
+
+  probes:
+    startup:
+      tcpSocket:
+        port: rcon
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      failureThreshold: 120
+    readiness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 10
+      failureThreshold: 6
+    liveness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 30
+      failureThreshold: 5
+
+  capabilities:
+    lifecycle:
+      stop: ["quit"]
+    actions:
+      - id: broadcast
+        displayName: Broadcast
+        icon: megaphone
+        group: Server
+        command: 'say "{{.Params.message}}"'
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+      - id: change-map
+        displayName: Change Map
+        icon: map
+        group: Game
+        command: "changelevel {{.Params.map}}"
+        params:
+          - name: map
+            displayName: Map Name
+            type: string
+            required: true
+      - id: kick-player
+        displayName: Kick Player
+        icon: user-x
+        group: Moderation
+        command: "kick {{.Params.user}}"
+        params:
+          - name: user
+            displayName: Player Name or UserID
+            type: string
+            required: true
+    mods:
+      path: left4dead2/addons
+      extensions: [".vpk", ".smx", ".so"]
+      install:
+        allowedHosts:
+          - github.com
+          - .githubusercontent.com
+        maxSizeMB: 256
+
+  configSchema:
+    - name: SERVER_HOSTNAME
+      displayName: Server Hostname
+      type: string
+      default: "Gameplane Left 4 Dead 2 Server"
+    - name: SERVER_PASSWORD
+      displayName: Server Password
+      type: password
+      default: ""
+    - name: RCON_PASSWORD
+      displayName: RCON Password
+      type: password
+      default: ""
+    - name: SERVER_START_MAP
+      displayName: Starting Map
+      type: string
+      default: "c1m1_hotel"

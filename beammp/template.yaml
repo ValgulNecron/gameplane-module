@@ -1,0 +1,97 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
+# Gameplane GameTemplate for BeamMP (BeamNG.drive dedicated server).
+#
+# Backed by Gameplane-owned BeamMP container with non-crashing diagnostic idle
+# when the auth key is missing (FR-013).
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/beammp/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: beammp
+  labels:
+    gameplane.local/module: beammp
+spec:
+  displayName: BeamMP
+  game: beammp
+  version: 1.0.0
+  categories: [Simulation, Driving, Physics, Multiplayer]
+  accentColor: "#f97316"
+  description: |
+    BeamMP dedicated server for BeamNG.drive multiplayer physics simulation.
+    Interactive console connects via container PTY stdin/stdout. Mods and
+    custom vehicle/map packages install into the Resources directory.
+
+  image: ghcr.io/valgulnecron/gameplane/beammp:latest@sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+  env:
+    - name: HOME
+      value: /home/gameplane
+
+  security:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  ports:
+    - name: game
+      containerPort: 30814
+      protocol: UDP
+      advertise: true
+    - name: auth
+      containerPort: 30814
+      protocol: TCP
+      advertise: true
+
+  storage:
+    size: 5Gi
+    mountPath: /server/Root
+
+  resources:
+    requests: {cpu: "1", memory: 2Gi}
+    limits: {cpu: "4", memory: 4Gi}
+
+  rcon:
+    protocol: none
+
+  consoleMode: pty
+
+  probes:
+    readiness:
+      tcpSocket:
+        port: auth
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      failureThreshold: 10
+
+  capabilities:
+    mods:
+      path: Resources
+      extensions: [".zip"]
+      install:
+        allowedHosts:
+          - github.com
+          - .githubusercontent.com
+        maxSizeMB: 512
+
+  configSchema:
+    - name: BEAMMP_AUTH_KEY
+      displayName: Server AuthKey
+      description: BeamMP server authentication key from beammp.com.
+      type: password
+      required: true
+      default: ""
+    - name: SERVER_NAME
+      displayName: Server Name
+      type: string
+      default: "Gameplane BeamMP Server"
+    - name: MAP
+      displayName: Map Path
+      type: string
+      default: "/levels/gridmap_v2/info.json"
+    - name: MAX_PLAYERS
+      displayName: Max Players
+      type: int
+      default: 10

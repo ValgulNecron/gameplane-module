@@ -81,6 +81,10 @@ spec:
       containerPort: 27015
       protocol: UDP
       advertise: false
+    - name: rcon
+      containerPort: 2305
+      protocol: UDP
+      advertise: false
 
   # ServerZ documents four separate paths (/data, /overrides, /install,
   # /root/.steam) with no common parent besides /. Only /data (world/
@@ -162,6 +166,15 @@ spec:
         icon: lock-open
         group: Server
         command: "#unlock"
+    mods:
+      idList:
+        env: MOD_LIST
+        separator: ","
+        mode: replace
+      registry:
+        providers:
+          - provider: steam
+            steamAppID: 221100
 
   # No console/probes block: the game's only ports are UDP (no TCP surface
   # to probe), and there is no HTTP endpoint either. Kubernetes falls back

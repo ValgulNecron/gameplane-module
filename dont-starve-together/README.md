@@ -32,6 +32,7 @@ Mods are managed through the game's Steam Workshop integration. Workshop mod IDs
 | Name   | Port  | Protocol | Advertised | Purpose           |
 | ------ | ----- | -------- | ---------- | ----------------- |
 | game   | 10999 | UDP      | yes        | Master shard      |
+| query  | 27018 | UDP      | yes        | Steam query       |
 | caves  | 11000 | UDP      | yes        | Caves shard       |
 | steam1 | 12346 | UDP      | no         | Steam networking  |
 | steam2 | 12347 | UDP      | no         | Steam networking  |

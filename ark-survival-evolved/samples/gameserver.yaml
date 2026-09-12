@@ -1,0 +1,31 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: ark-survival-evolved-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: ark-survival-evolved
+
+  config:
+    SESSION_NAME: "Gameplane ARK Server"
+    SERVER_PASSWORD: ""
+    RCON_PASSWORD: "secret-rcon-password"
+    MAX_PLAYERS: "70"
+    MAP_NAME: "TheIsland"
+    CLUSTER_ID: "cluster-alpha"
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 30777
+      - name: query
+        nodePort: 32015
+
+  storage:
+    size: 35Gi
+
+  resources:
+    requests: { cpu: 2, memory: 8Gi }
+    limits:   { cpu: 6, memory: 16Gi }

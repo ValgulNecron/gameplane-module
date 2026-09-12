@@ -1,0 +1,146 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
+# Gameplane GameTemplate for ARK: Survival Evolved (dedicated server).
+#
+# Dedicated server for ARK: Survival Evolved running on Linux.
+# Persistent world state and cluster directory live under /serverdata/ShooterGame/Saved.
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/ark-survival-evolved/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: ark-survival-evolved
+  labels:
+    gameplane.local/module: ark-survival-evolved
+spec:
+  displayName: "ARK: Survival Evolved"
+  game: ark-survival-evolved
+  version: 1.0.0
+  categories: [Survival, Open World, Multiplayer, Dinosaurs]
+  accentColor: "#00b2e2"
+  description: |
+    ARK: Survival Evolved dedicated server. Source RCON powers remote administration
+    and server actions. Persistent world state and cross-shard cluster transfers live
+    under `/serverdata/ShooterGame/Saved`.
+
+  image: ghcr.io/valgulnecron/gameplane/ark-survival-evolved:latest@sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+  versions:
+    - id: latest
+      displayName: "Latest"
+      image: ghcr.io/valgulnecron/gameplane/ark-survival-evolved:latest@sha256:0000000000000000000000000000000000000000000000000000000000000000
+      default: true
+
+  env:
+    - name: HOME
+      value: /serverdata
+
+  security:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  ports:
+    - name: game
+      containerPort: 7777
+      protocol: UDP
+      advertise: true
+    - name: query
+      containerPort: 27015
+      protocol: UDP
+      advertise: true
+    - name: rcon
+      containerPort: 27020
+      protocol: TCP
+      advertise: false
+
+  storage:
+    size: 35Gi
+    mountPath: /serverdata/ShooterGame/Saved
+
+  resources:
+    requests: {cpu: "2", memory: 8Gi}
+    limits: {cpu: "6", memory: 16Gi}
+
+  rcon:
+    protocol: source
+    port: 27020
+    passwordEnv: RCON_PASSWORD
+
+  consoleMode: rcon
+
+  probes:
+    startup:
+      tcpSocket:
+        port: rcon
+      initialDelaySeconds: 60
+      periodSeconds: 15
+      failureThreshold: 60
+    readiness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 10
+      failureThreshold: 6
+    liveness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 30
+      failureThreshold: 5
+
+  capabilities:
+    lifecycle:
+      stop: ["SaveWorld", "DoExit"]
+    actions:
+      - id: broadcast
+        displayName: Broadcast
+        icon: megaphone
+        group: Server
+        command: 'ServerChat "{{.Params.message}}"'
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+      - id: save-world
+        displayName: Save World
+        icon: save
+        group: World
+        command: "SaveWorld"
+      - id: kick-player
+        displayName: Kick Player
+        icon: user-x
+        group: Moderation
+        command: "KickPlayer {{.Params.user}}"
+        params:
+          - name: user
+            displayName: Player SteamID
+            type: string
+            required: true
+
+  configSchema:
+    - name: SESSION_NAME
+      displayName: Session Name
+      type: string
+      default: "Gameplane ARK Server"
+    - name: SERVER_PASSWORD
+      displayName: Server Password
+      type: password
+      default: ""
+    - name: RCON_PASSWORD
+      displayName: RCON Password
+      type: password
+      default: ""
+    - name: MAX_PLAYERS
+      displayName: Max Players
+      type: int
+      default: 70
+    - name: MAP_NAME
+      displayName: Map Name
+      type: string
+      default: "TheIsland"
+    - name: CLUSTER_ID
+      displayName: Cluster ID
+      description: Shared cluster identifier for cross-ark transfers.
+      type: string
+      default: ""

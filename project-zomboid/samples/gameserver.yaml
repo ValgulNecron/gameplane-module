@@ -1,0 +1,28 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: project-zomboid-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: project-zomboid
+
+  config:
+    SERVER_NAME: "Gameplane PZ Server"
+    MAX_MEMORY: "4096m"
+    ADMIN_USERNAME: "admin"
+    PVP: "true"
+    PUBLIC: "false"
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 31261
+
+  storage:
+    size: 15Gi
+
+  resources:
+    requests: { cpu: 1, memory: 4Gi }
+    limits:   { cpu: 4, memory: 8Gi }

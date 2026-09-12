@@ -1,0 +1,161 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
+# Gameplane GameTemplate for Team Fortress 2 (dedicated server).
+#
+# Backed by cm2network/tf2. TF2 dedicated server runs under the Source engine
+# with standard Source RCON on TCP 27015. Stateless match-based gameplay
+# with clean shutdown via `quit`.
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/team-fortress-2/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: team-fortress-2
+  labels:
+    gameplane.local/module: team-fortress-2
+spec:
+  displayName: Team Fortress 2
+  game: team-fortress-2
+  version: 1.0.0
+  categories: [Shooter, Action, Class-Based]
+  accentColor: "#bd3b3b"
+  description: |
+    Team Fortress 2 dedicated server using [cm2network/tf2](https://github.com/CM2Walki/TF2).
+    Source RCON powers the console, moderation, and in-game actions;
+    SourceMod and MetaMod plugins install under `tf/addons`.
+
+  image: cm2network/tf2:latest@sha256:39c03ecbee022350a13aec49c7948263c00b5a0d5874b72faf0f4193de863e7b
+
+  env:
+    - name: HOME
+      value: /home/steam
+
+  security:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  ports:
+    - name: game
+      containerPort: 27015
+      protocol: UDP
+      advertise: true
+    - name: rcon
+      containerPort: 27015
+      protocol: TCP
+      advertise: false
+    - name: sourcetv
+      containerPort: 27020
+      protocol: UDP
+      advertise: true
+
+  storage:
+    size: 15Gi
+    mountPath: /home/steam/tf-dedicated
+
+  resources:
+    requests: {cpu: "1", memory: 2Gi}
+    limits: {cpu: "4", memory: 4Gi}
+
+  rcon:
+    protocol: source
+    port: 27015
+    passwordEnv: SRCDS_RCONPW
+
+  consoleMode: rcon
+
+  probes:
+    startup:
+      tcpSocket:
+        port: rcon
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      failureThreshold: 120
+    readiness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 10
+      failureThreshold: 6
+    liveness:
+      tcpSocket:
+        port: rcon
+      periodSeconds: 30
+      failureThreshold: 5
+
+  capabilities:
+    lifecycle:
+      stop: ["quit"]
+    actions:
+      - id: broadcast
+        displayName: Broadcast
+        icon: megaphone
+        group: Server
+        command: 'say "{{.Params.message}}"'
+        params:
+          - name: message
+            displayName: Message
+            type: string
+            required: true
+      - id: change-map
+        displayName: Change map
+        icon: map
+        group: World
+        danger: true
+        confirm: true
+        command: "changelevel {{.Params.map}}"
+        params:
+          - name: map
+            displayName: Map
+            type: string
+            default: ctf_2fort
+            required: true
+      - id: restart-round
+        displayName: Restart round
+        icon: rotate-ccw
+        group: World
+        command: "mp_restartgame {{.Params.seconds}}"
+        params:
+          - name: seconds
+            displayName: Seconds
+            type: int
+            default: "1"
+            required: true
+      - id: reload-config
+        displayName: Exec config
+        icon: settings
+        group: Server
+        command: "exec {{.Params.cfg}}"
+        params:
+          - name: cfg
+            displayName: Config file
+            type: string
+            default: server.cfg
+            required: true
+    mods:
+      path: tf/addons
+      extensions: [".so", ".smx"]
+      install:
+        allowedHosts:
+          - github.com
+          - .githubusercontent.com
+        maxSizeMB: 256
+
+  configSchema:
+    - name: SRCDS_TOKEN
+      displayName: GSLT (Steam Login Token)
+      description: Game Server Login Token for TF2 (App ID 440) from steamcommunity.com/dev/managegameservers.
+      type: password
+      default: ""
+    - name: SRCDS_HOSTNAME
+      displayName: Server Hostname
+      type: string
+      default: "Gameplane TF2 Server"
+    - name: SRCDS_STARTMAP
+      displayName: Starting Map
+      type: string
+      default: "ctf_2fort"
+    - name: SRCDS_MAXPLAYERS
+      displayName: Max Players
+      type: int
+      default: 24

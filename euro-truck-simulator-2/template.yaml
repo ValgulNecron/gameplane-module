@@ -1,0 +1,84 @@
+# yaml-language-server: $schema=../.schema/gametemplate.schema.json
+# Gameplane GameTemplate for Euro Truck Simulator 2 (dedicated server).
+#
+# Backed by Gameplane-owned ETS2 container with non-crashing diagnostic idle
+# when the server logon token is missing (FR-013).
+#
+# Cluster-scoped; apply once per cluster:
+#     kubectl apply -f modules/euro-truck-simulator-2/template.yaml
+
+apiVersion: gameplane.local/v1alpha1
+kind: GameTemplate
+metadata:
+  name: euro-truck-simulator-2
+  labels:
+    gameplane.local/module: euro-truck-simulator-2
+spec:
+  displayName: Euro Truck Simulator 2
+  game: euro-truck-simulator-2
+  version: 1.0.0
+  categories: [Simulation, Driving, Multiplayer]
+  accentColor: "#3b82f6"
+  description: |
+    Euro Truck Simulator 2 dedicated convoy server. Interactive console
+    connects via container PTY stdin/stdout. Server state and configs persist
+    under the user profile directory.
+
+  image: ghcr.io/valgulnecron/gameplane/euro-truck-simulator-2:latest@sha256:0000000000000000000000000000000000000000000000000000000000000000
+
+  env:
+    - name: HOME
+      value: /home/gameplane
+
+  security:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  ports:
+    - name: game
+      containerPort: 27015
+      protocol: UDP
+      advertise: true
+    - name: query
+      containerPort: 27016
+      protocol: UDP
+      advertise: true
+
+  storage:
+    size: 10Gi
+    mountPath: /home/steam/.local/share/Euro Truck Simulator 2
+
+  resources:
+    requests: {cpu: "1", memory: 2Gi}
+    limits: {cpu: "4", memory: 4Gi}
+
+  rcon:
+    protocol: none
+
+  consoleMode: pty
+
+  capabilities:
+    lifecycle:
+      stop: ["exit"]
+
+  configSchema:
+    - name: SERVER_LOGON_TOKEN
+      displayName: Server Logon Token
+      description: Steam Game Server Logon Token for ETS2 (App ID 1948400) from steamcommunity.com/dev/managegameservers.
+      type: password
+      required: true
+      default: ""
+    - name: SERVER_NAME
+      displayName: Convoy Name
+      type: string
+      default: "Gameplane ETS2 Convoy"
+    - name: MAX_PLAYERS
+      displayName: Max Players
+      type: int
+      default: 8
+    - name: SERVER_PASSWORD
+      displayName: Convoy Password
+      description: Optional password required for clients to join.
+      type: password
+      default: ""

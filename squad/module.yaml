@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../.schema/module.schema.json
+apiVersion: gameplane.local/module/v1
+name: squad
+displayName: Squad
+version: 1.0.0
+game: squad
+categories: [Shooter, Tactical, Military, Multiplayer]
+summary: Squad dedicated server (Unreal Engine 4) with Source-family RCON console, match-based rotation, and Steam Workshop modding support.
+homepage: https://joinsquad.com/
+license: MIT
+gameplaneMinVersion: 0.2.0-beta.7

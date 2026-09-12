@@ -1,0 +1,27 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: beammp-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: beammp
+
+  config:
+    BEAMMP_AUTH_KEY: "change-me-auth-key"
+    SERVER_NAME: "Gameplane BeamMP Server"
+    MAP: "/levels/gridmap_v2/info.json"
+    MAX_PLAYERS: "10"
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 30814
+
+  storage:
+    size: 5Gi
+
+  resources:
+    requests: { cpu: 1, memory: 2Gi }
+    limits:   { cpu: 4, memory: 4Gi }

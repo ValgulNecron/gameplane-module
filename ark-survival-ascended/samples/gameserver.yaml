@@ -1,0 +1,28 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: ark-survival-ascended-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: ark-survival-ascended
+
+  config:
+    SESSION_NAME: "Gameplane ASA Server"
+    SERVER_PASSWORD: ""
+    SERVER_ADMIN_PASSWORD: "change-me-admin-password"
+    MAX_PLAYERS: "32"
+    MAP_NAME: "TheIsland_WP"
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 30777
+
+  storage:
+    size: 30Gi
+
+  resources:
+    requests: { cpu: 2, memory: 10Gi }
+    limits:   { cpu: 6, memory: 20Gi }

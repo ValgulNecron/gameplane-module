@@ -1,0 +1,27 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: mount-and-blade-2-bannerlord-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: mount-and-blade-2-bannerlord
+
+  config:
+    SERVER_NAME: "Gameplane Bannerlord Server"
+    SERVER_TOKEN: "change-me-token"
+    GAME_TYPE: "TeamDeathmatch"
+    MAX_PLAYERS: "64"
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 30210
+
+  storage:
+    size: 20Gi
+
+  resources:
+    requests: { cpu: 2, memory: 4Gi }
+    limits:   { cpu: 4, memory: 8Gi }

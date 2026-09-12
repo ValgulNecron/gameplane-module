@@ -109,6 +109,8 @@ spec:
     fsGroup: 25000
 
   env:
+    - name: HOME
+      value: /home/gameserver
     - name: ENABLE_DEBUG
       value: "0"
 

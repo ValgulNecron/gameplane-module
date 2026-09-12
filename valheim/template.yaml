@@ -116,6 +116,8 @@ spec:
   # BepInEx plugins live under /config/bepinex/plugins; the image loads them
   # when BEPINEX is enabled (see the config field below).
   capabilities:
+    lifecycle:
+      stop: ["save"]
     mods:
       loaders:
         bepinex:

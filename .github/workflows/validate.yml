@@ -45,3 +45,7 @@ jobs:
       # no registry and no cosign.
       - name: Test build.sh signing preconditions
         run: ./test-build-sh.sh
+
+      - name: Test validate.py directory layout rules
+        run: ./test-validate-py.sh
+

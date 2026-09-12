@@ -1,0 +1,29 @@
+apiVersion: gameplane.local/v1alpha1
+kind: GameServer
+metadata:
+  name: tmodloader-01
+  namespace: gameplane-games
+spec:
+  templateRef:
+    name: tmodloader
+
+  config:
+    WORLDNAME: "GameplaneTMod"
+    AUTOCREATE: "2"
+    DIFFICULTY: "1"
+    MAXPLAYERS: "8"
+    MOTD: "Welcome to Gameplane tModLoader Server"
+    MODPACK: ""
+
+  networking:
+    expose: NodePort
+    portOverrides:
+      - name: game
+        nodePort: 31777
+
+  storage:
+    size: 4Gi
+
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits:   { cpu: 2, memory: 4Gi }

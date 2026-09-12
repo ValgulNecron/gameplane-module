@@ -79,6 +79,9 @@ spec:
       displayName: "Latest (moves on restart)"
       image: vinanrra/7dtd-server:latest  # gameplane:floating
 
+  security:
+    fsGroup: 1000
+
   env:
     # Required by the image — with no env at all (the previous draft's
     # state) the container has no defined start behavior. START_MODE=1 is

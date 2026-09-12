@@ -1,0 +1,11 @@
+# yaml-language-server: $schema=../.schema/module.schema.json
+apiVersion: gameplane.local/module/v1
+name: euro-truck-simulator-2
+displayName: Euro Truck Simulator 2
+version: 1.0.0
+game: euro-truck-simulator-2
+categories: [Simulation, Driving, Multiplayer]
+summary: Euro Truck Simulator 2 dedicated convoy server with PTY console, diagnostic idle for missing logon token, and persistent world state.
+homepage: https://eurotrucksimulator2.com/
+license: MIT
+gameplaneMinVersion: 0.2.0-beta.7
