@@ -58,10 +58,6 @@ spec:
 
   consoleMode: pty
 
-  capabilities:
-    lifecycle:
-      stop: []
-
   configSchema:
     - name: SERVER_NAME
       displayName: Server Name

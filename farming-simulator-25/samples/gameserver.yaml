@@ -10,7 +10,7 @@ spec:
   config:
     ADMIN_PASSWORD: "change-me-admin-password"
     SERVER_NAME: "Gameplane FS25 Server"
-    MAX_PLAYERS: 16
+    MAX_PLAYERS: "16"
 
   networking:
     expose: NodePort

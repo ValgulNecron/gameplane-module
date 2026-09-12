@@ -10,10 +10,10 @@ spec:
   version: stable
 
   config:
-    MAXPLAYERS: 4
-    MAXTICKRATE: 30
-    AUTOSAVENUM: 5
-    TIMEOUT: 30
+    MAXPLAYERS: "4"
+    MAXTICKRATE: "30"
+    AUTOSAVENUM: "5"
+    TIMEOUT: "30"
 
   networking:
     expose: NodePort

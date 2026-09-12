@@ -11,7 +11,7 @@ spec:
     SERVER_NAME: "Gameplane Bannerlord Server"
     SERVER_TOKEN: "change-me-token"
     GAME_TYPE: "TeamDeathmatch"
-    MAX_PLAYERS: 64
+    MAX_PLAYERS: "64"
 
   networking:
     expose: NodePort

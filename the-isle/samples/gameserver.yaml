@@ -11,7 +11,7 @@ spec:
     SERVER_NAME: "Gameplane The Isle Server"
     SERVER_PASSWORD: ""
     RCON_PASSWORD: "secret-rcon-password"
-    MAX_PLAYERS: 50
+    MAX_PLAYERS: "50"
 
   networking:
     expose: NodePort

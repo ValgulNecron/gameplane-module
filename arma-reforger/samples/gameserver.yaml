@@ -11,7 +11,7 @@ spec:
     SERVER_NAME: "Gameplane Arma Reforger Server"
     SERVER_PASSWORD: ""
     ADMIN_PASSWORD: "secret-admin-pass"
-    MAX_PLAYERS: 64
+    MAX_PLAYERS: "64"
 
   networking:
     expose: NodePort

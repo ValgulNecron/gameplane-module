@@ -13,7 +13,7 @@ spec:
     SERVER_NAME: "Gameplane Hell Let Loose Server"
     SERVER_PASSWORD: ""
     RCON_PASSWORD: "secret-rcon-password"
-    MAX_PLAYERS: 100
+    MAX_PLAYERS: "100"
 
   networking:
     expose: NodePort

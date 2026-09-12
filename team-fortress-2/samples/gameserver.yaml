@@ -11,7 +11,7 @@ spec:
     SRCDS_TOKEN: ""
     SRCDS_HOSTNAME: "Gameplane TF2 Server"
     SRCDS_STARTMAP: "ctf_2fort"
-    SRCDS_MAXPLAYERS: 24
+    SRCDS_MAXPLAYERS: "24"
 
   networking:
     expose: NodePort
